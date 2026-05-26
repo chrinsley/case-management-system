@@ -8,6 +8,21 @@ if (!isset($_SESSION['lawyer_id'])) {
     exit;
 }
 
+function courtDateStatusBadgeHtml($status) {
+    switch (strtolower((string) $status)) {
+        case 'scheduled':
+            return '<span class="badge badge-sm bg-gradient-info">Scheduled</span>';
+        case 'completed':
+            return '<span class="badge badge-sm bg-gradient-success">Completed</span>';
+        case 'cancelled':
+            return '<span class="badge badge-sm bg-gradient-danger">Cancelled</span>';
+        case 'postponed':
+            return '<span class="badge badge-sm bg-gradient-warning">Postponed</span>';
+        default:
+            return '<span class="badge badge-sm bg-gradient-secondary">' . htmlspecialchars(ucfirst((string) $status)) . '</span>';
+    }
+}
+
 $lawyerId = $_SESSION['lawyer_id'];
 
 // Check if court_dates table exists
@@ -228,11 +243,17 @@ foreach ($court_dates as $date) {
         .court-date-modal .modal-dialog {
             max-width: 600px;
         }
-        .status-badge {
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.25rem;
-            font-size: 0.75rem;
-            font-weight: 600;
+        .court-actions {
+            display: inline-flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .court-actions .btn {
+            min-width: 4.25rem;
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
+            text-align: center;
         }
         /* Only previous/next month buttons */
         .fc .fc-prev-button,
@@ -261,10 +282,6 @@ foreach ($court_dates as $date) {
             border-color: #ffffff !important;
             color: #344767 !important;
         }
-        .status-scheduled { background-color: #17a2b8; color: white; }
-        .status-completed { background-color: #28a745; color: white; }
-        .status-cancelled { background-color: #dc3545; color: white; }
-        .status-postponed { background-color: #ffc107; color: black; }
     </style>
 </head>
 <body class="g-sidenav-show bg-gray-100 legalpro-lawyer-portal lawyer-court-tracking-page">
@@ -447,21 +464,15 @@ NAV;
                                                 <td><?php echo htmlspecialchars($date['client_name']); ?></td>
                                                 <td><?php echo date('M d, Y g:i A', strtotime($date['court_date'])); ?></td>
                                                 <td><?php echo htmlspecialchars($date['title']); ?></td>
-                                                <td>
-                                                    <span class="status-badge status-<?php echo $date['status']; ?>">
-                                                        <?php echo ucfirst($date['status']); ?>
-                                                    </span>
+                                                <td class="align-middle text-center">
+                                                    <?php echo courtDateStatusBadgeHtml($date['status']); ?>
                                                 </td>
-                                                <td>
-                                                    <button class="btn btn-info btn-sm me-1" onclick="viewCourtDate(<?php echo $date['id']; ?>)" title="View Details">
-                                                        <i class="fas fa-eye"></i> View
-                                                    </button>
-                                                    <button class="btn btn-warning btn-sm me-1" onclick="editCourtDate(<?php echo $date['id']; ?>)" title="Edit Court Date">
-                                                        <i class="fas fa-edit"></i> Edit
-                                                    </button>
-                                                    <button class="btn btn-danger btn-sm" onclick="deleteCourtDate(<?php echo $date['id']; ?>)" title="Delete Court Date">
-                                                        <i class="fas fa-trash"></i> Delete
-                                                    </button>
+                                                <td class="align-middle">
+                                                    <div class="court-actions">
+                                                        <button type="button" class="btn btn-sm btn-primary mb-0" onclick="viewCourtDate(<?php echo (int) $date['id']; ?>)" title="View">View</button>
+                                                        <button type="button" class="btn btn-sm btn-dark mb-0" onclick="editCourtDate(<?php echo (int) $date['id']; ?>)" title="Edit">Edit</button>
+                                                        <button type="button" class="btn btn-sm btn-danger mb-0" onclick="deleteCourtDate(<?php echo (int) $date['id']; ?>)" title="Delete">Delete</button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -611,7 +622,7 @@ NAV;
                             <strong>Date & Time:</strong> <span id="view_datetime"></span>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <strong>Status:</strong> <span id="view_status" class="status-badge"></span>
+                            <strong>Status:</strong> <span id="view_status" class="badge badge-sm bg-gradient-secondary"></span>
                         </div>
                         <div class="col-md-12 mb-3">
                             <strong>Title:</strong> <span id="view_title"></span>
@@ -750,8 +761,21 @@ NAV;
                 document.getElementById('view_case_title').textContent = eventData.case_title;
                 document.getElementById('view_client_name').textContent = eventData.client_name;
                 document.getElementById('view_datetime').textContent = new Date(eventData.court_date).toLocaleString();
-                document.getElementById('view_status').textContent = eventData.status.charAt(0).toUpperCase() + eventData.status.slice(1);
-                document.getElementById('view_status').className = 'status-badge status-' + eventData.status;
+                var statusLabels = {
+                    scheduled: 'Scheduled',
+                    completed: 'Completed',
+                    cancelled: 'Cancelled',
+                    postponed: 'Postponed'
+                };
+                var statusClasses = {
+                    scheduled: 'badge badge-sm bg-gradient-info',
+                    completed: 'badge badge-sm bg-gradient-success',
+                    cancelled: 'badge badge-sm bg-gradient-danger',
+                    postponed: 'badge badge-sm bg-gradient-warning'
+                };
+                var statusKey = (eventData.status || '').toLowerCase();
+                document.getElementById('view_status').textContent = statusLabels[statusKey] || (statusKey.charAt(0).toUpperCase() + statusKey.slice(1));
+                document.getElementById('view_status').className = statusClasses[statusKey] || 'badge badge-sm bg-gradient-secondary';
                 document.getElementById('view_title').textContent = eventData.title;
                 document.getElementById('view_description').textContent = eventData.description || 'No description';
                 document.getElementById('view_location').textContent = eventData.location || 'Not specified';
