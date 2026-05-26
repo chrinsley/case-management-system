@@ -642,10 +642,8 @@ $html = <<<'HTML'
 						name="services[${serviceRowIndex}][price]" 
 						step="0.01" min="0" placeholder="0.00" value="${escapeHtml(price)}" required>
 				</td>
-				<td>
-					<button type="button" class="btn btn-sm btn-danger remove-service-row">
-						<i class="fas fa-trash"></i>
-					</button>
+				<td class="align-middle text-center">
+					<button type="button" class="btn btn-sm btn-danger mb-0 remove-service-row" title="Delete service" aria-label="Delete service">Delete</button>
 				</td>
 			`;
 			tbody.appendChild(row);
