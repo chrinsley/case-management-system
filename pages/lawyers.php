@@ -230,12 +230,10 @@ $lawyers = [];
 try {
     $stmt = $pdo->query("
         SELECT l.*, u.username,
-               COUNT(DISTINCT cl.case_id) as active_cases,
-               GROUP_CONCAT(DISTINCT la.day_of_week ORDER BY FIELD(la.day_of_week, 'monday','tuesday','wednesday','thursday','friday','saturday','sunday')) as available_days
+               COUNT(DISTINCT cl.case_id) as active_cases
         FROM lawyers l
         LEFT JOIN users u ON u.id = l.user_id
         LEFT JOIN case_lawyers cl ON cl.lawyer_id = l.id
-        LEFT JOIN lawyer_availability la ON la.lawyer_id = l.id AND la.is_available = 1
         GROUP BY l.id
         ORDER BY l.last_name, l.first_name
     ");
@@ -271,7 +269,7 @@ foreach ($availableUsers as $user) {
 
 $lawyersTable = '';
 if (empty($lawyers)) {
-    $lawyersTable = '<tr><td colspan="6" class="text-center text-muted py-4">No lawyers added yet.</td></tr>';
+    $lawyersTable = '<tr><td colspan="5" class="text-center text-muted py-4">No lawyers added yet.</td></tr>';
 } else {
     foreach ($lawyers as $lawyer) {
         $statusBadge = $lawyer['is_active'] ? '<span class="badge bg-gradient-success">Active</span>' : '<span class="badge bg-gradient-secondary">Inactive</span>';
@@ -298,9 +296,6 @@ if (empty($lawyers)) {
             <td class="text-center">
                 <span class="text-sm font-weight-bold">' . $activeCases . '</span>
                 <p class="text-xs text-muted mb-0">active cases</p>
-            </td>
-            <td class="text-center">
-                <p class="text-sm mb-0">' . htmlspecialchars($lawyer['available_days'] ?: 'Not set') . '</p>
             </td>
             <td class="text-end">
                 <div class="d-flex gap-1 justify-content-end">
@@ -381,7 +376,7 @@ $html = <<<'HTML'
                             <div class="row align-items-center">
                                 <div class="col-lg-8">
                                     <h5 class="mb-0">Lawyer Management</h5>
-                                    <p class="text-sm text-muted mb-0">Manage lawyers, their information, and availability</p>
+                                    <p class="text-sm text-muted mb-0">Manage lawyers and their information</p>
                                 </div>
                                 <div class="col-lg-4 text-end">
                                     <button class="btn btn-dark btn-sm mb-0" onclick="showLawyerForm()">
@@ -418,7 +413,6 @@ $html = <<<'HTML'
                                             <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Specialization</th>
                                             <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
                                             <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Cases</th>
-                                            <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Availability</th>
                                             <th class="text-secondary opacity-7"></th>
                                         </tr>
                                     </thead>
