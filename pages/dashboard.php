@@ -208,6 +208,18 @@ $html = <<<'HTML'
             border-radius: 0.5rem !important;
             padding: 0.5rem 1rem;
         }
+        .fc .fc-button-group {
+            gap: 0.35rem;
+        }
+        .fc .fc-toolbar-chunk {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .fc .fc-button-group > .fc-button {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
         .fc .fc-button-primary:hover {
             box-shadow: 0 4px 7px -1px rgba(0, 0, 0, 0.11), 0 2px 4px -1px rgba(0, 0, 0, 0.07);
             opacity: 0.85;
