@@ -718,7 +718,7 @@ $html = <<<'HTML'
                 <div class="col-lg-4">
                     <div class="card ca-panel ca-book border-radius-lg sticky-lg-top" style="top: 1rem;">
                         <div class="card-header pb-0">
-                            <h5 class="text-dark">Book a visit</h5>
+                            <h5 class="text-dark">Book appointment</h5>
                             <p class="text-sm text-muted mb-0">Pick counsel, matter, date, and time.</p>
                         </div>
                         <div class="card-body pt-3">
@@ -763,7 +763,7 @@ $html = <<<'HTML'
                                     <label class="form-control-label">Notes <span class="text-muted font-weight-normal">(optional)</span></label>
                                     <textarea class="form-control" name="notes" rows="3" placeholder="Topics you want to cover…"></textarea>
                                 </div>
-                                <button type="submit" id="bookAppointmentBtn" class="btn btn-primary w-100 mb-0 font-weight-bold border-radius-lg">Request appointment</button>
+                                <button type="submit" id="bookAppointmentBtn" class="btn btn-primary w-100 mb-0 font-weight-bold border-radius-lg">Book appointment</button>
                             </form>
                         </div>
                     </div>

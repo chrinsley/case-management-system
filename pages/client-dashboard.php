@@ -435,7 +435,7 @@ $html = <<<'HTML'
                                 <h6>Upcoming appointments</h6>
                                 <p class="cd-panel-sub">Accepted meetings on your calendar</p>
                             </div>
-                            <a href="client-appointments.php" class="btn btn-sm btn-outline-primary mb-0">Schedule</a>
+                            <a href="client-appointments.php" class="btn btn-sm btn-outline-primary mb-0">Book appointment</a>
                         </div>
                         <div class="card-body p-3 pt-2">
                             {UPCOMING_APPOINTMENTS}
@@ -508,7 +508,7 @@ $html = str_replace('{RECENT_CASES}', $recentCasesHtml, $html);
 // Upcoming Appointments
 $appointmentsHtml = '';
 if (empty($upcomingAppointments)) {
-    $appointmentsHtml = '<div class="text-center text-muted py-5 px-3"><p class="text-sm mb-1 font-weight-bold">No upcoming meetings</p><p class="text-xs mb-3">Accepted appointments will appear here with date and counsel.</p><a href="client-appointments.php" class="btn btn-sm btn-primary mb-0">Book an appointment</a></div>';
+    $appointmentsHtml = '<div class="text-center text-muted py-5 px-3"><p class="text-sm mb-1 font-weight-bold">No upcoming meetings</p><p class="text-xs mb-0">Accepted appointments will appear here with date and counsel.</p></div>';
 } else {
     foreach ($upcomingAppointments as $apt) {
         $appointmentDate = date('M j, Y g:i A', strtotime($apt['starts_at']));
