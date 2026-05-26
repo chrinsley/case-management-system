@@ -183,24 +183,6 @@ $html = <<<'HTML'
             border-radius: 0.75rem;
             overflow: hidden;
         }
-        .availability-fallback-toolbar {
-            align-items: center;
-            background: #ffffff;
-            border-bottom: 1px solid #e9ecef;
-            display: flex;
-            justify-content: space-between;
-            gap: 1rem;
-            padding: 1rem;
-        }
-        .availability-fallback-toolbar h5 {
-            color: #344767;
-            font-weight: 800;
-            margin: 0;
-        }
-        .availability-fallback-actions {
-            display: inline-flex;
-            gap: 0.5rem;
-        }
         .availability-fallback-header,
         .availability-fallback-grid {
             display: grid;
@@ -216,22 +198,10 @@ $html = <<<'HTML'
             padding: 0.75rem;
             text-transform: uppercase;
         }
-        .availability-fallback-date {
-            color: #6c757d;
-            display: block;
-            font-size: 0.72rem;
-            font-weight: 700;
-            margin-top: 0.25rem;
-            text-transform: none;
-        }
         .availability-fallback-day {
             min-height: 150px;
             border-right: 1px solid #e9ecef;
-            cursor: pointer;
             padding: 0.75rem;
-        }
-        .availability-fallback-day:hover {
-            background: #f8f9fa;
         }
         .availability-fallback-event {
             border-radius: 0.45rem;
@@ -427,7 +397,6 @@ $html = <<<'HTML'
     <script>
         var availabilityEvents = {AVAILABILITY_EVENTS_JSON};
         var calendarLoaded = false;
-        var fallbackWeekStart = getStartOfWeek(new Date());
 
         function dayNameFromDate(date) {
             return ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][date.getDay()];
@@ -438,26 +407,6 @@ $html = <<<'HTML'
             var month = String(date.getMonth() + 1).padStart(2, '0');
             var day = String(date.getDate()).padStart(2, '0');
             return year + '-' + month + '-' + day;
-        }
-
-        function getStartOfWeek(date) {
-            var weekStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-            weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-            return weekStart;
-        }
-
-        function formatFallbackDate(date) {
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        }
-
-        function formatFallbackWeekRange(startDate) {
-            var endDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 6);
-            return formatFallbackDate(startDate) + ' - ' + formatFallbackDate(endDate);
-        }
-
-        function changeFallbackWeek(offset) {
-            fallbackWeekStart = new Date(fallbackWeekStart.getFullYear(), fallbackWeekStart.getMonth(), fallbackWeekStart.getDate() + (offset * 7));
-            renderAvailabilityFallbackCalendar();
         }
 
         function openAvailabilityModal(day, slotId, slotDate, startTime, endTime, slotType) {
@@ -508,32 +457,20 @@ $html = <<<'HTML'
             var calendarEl = document.getElementById('availabilityCalendar');
             if (!calendarEl) return;
             var dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            var html = '<div class="availability-fallback-calendar">';
-            html += '<div class="availability-fallback-toolbar">';
-            html += '<div class="availability-fallback-actions">';
-            html += '<button type="button" class="btn btn-sm btn-outline-primary mb-0" onclick="changeFallbackWeek(-1)">Previous Week</button>';
-            html += '<button type="button" class="btn btn-sm btn-outline-primary mb-0" onclick="changeFallbackWeek(1)">Next Week</button>';
-            html += '</div>';
-            html += '<h5>' + formatFallbackWeekRange(fallbackWeekStart) + '</h5>';
-            html += '</div><div class="availability-fallback-header">';
-            dayNames.forEach(function(dayName, dayIndex) {
-                var headerDate = new Date(fallbackWeekStart.getFullYear(), fallbackWeekStart.getMonth(), fallbackWeekStart.getDate() + dayIndex);
-                html += '<div>' + dayName + '<span class="availability-fallback-date">' + formatFallbackDate(headerDate) + '</span></div>';
-            });
+            var html = '<div class="availability-fallback-calendar"><div class="availability-fallback-header">';
+            dayNames.forEach(function(dayName) { html += '<div>' + dayName + '</div>'; });
             html += '</div><div class="availability-fallback-grid">';
             dayNames.forEach(function(dayName, dayIndex) {
-                var currentDate = new Date(fallbackWeekStart.getFullYear(), fallbackWeekStart.getMonth(), fallbackWeekStart.getDate() + dayIndex);
-                var dateValue = dateToInputValue(currentDate);
-                html += '<div class="availability-fallback-day" onclick="openAvailabilityModal(\'' + dayNameFromDate(currentDate) + '\', \'\', \'' + dateValue + '\')">';
+                html += '<div class="availability-fallback-day">';
                 var eventsForDay = availabilityEvents.filter(function(event) {
-                    return event.start && event.start.substring(0, 10) === dateValue;
+                    return event.start && new Date(event.start).getDay() === dayIndex;
                 });
                 if (eventsForDay.length === 0) {
                     html += '<p class="text-sm text-muted mb-0">No hours set</p>';
                 } else {
                     eventsForDay.forEach(function(event) {
                         var props = event.extendedProps || {};
-                        html += '<div class="availability-fallback-event" style="background-color:' + event.backgroundColor + '" onclick="event.stopPropagation(); openAvailabilityModal(\'' + props.day + '\', \'' + (props.slotId || event.id) + '\', \'' + (props.slotDate || '') + '\', \'' + props.startTime + '\', \'' + props.endTime + '\', \'' + props.slotType + '\')">' + event.title + '</div>';
+                        html += '<div class="availability-fallback-event" style="background-color:' + event.backgroundColor + '" onclick="openAvailabilityModal(\'' + props.day + '\', \'' + (props.slotId || event.id) + '\', \'' + (props.slotDate || '') + '\', \'' + props.startTime + '\', \'' + props.endTime + '\', \'' + props.slotType + '\')">' + event.title + '</div>';
                     });
                 }
                 html += '</div>';
