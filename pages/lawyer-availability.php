@@ -11,23 +11,61 @@ if (!isset($_SESSION['lawyer_id'])) {
 $lawyerId = $_SESSION['lawyer_id'];
 $message = '';
 $messageType = '';
+$daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+try {
+    $pdo->query("ALTER TABLE lawyer_time_slots ADD COLUMN slot_date DATE NULL AFTER day_of_week");
+} catch (PDOException $e) {
+    if (stripos($e->getMessage(), 'duplicate column') === false && stripos($e->getMessage(), 'duplicate column name') === false) {
+        // Continue; save errors will show a detailed message if the schema is unavailable.
+    }
+}
 
 // Handle time slot management
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['add_slot'])) {
-        $dayOfWeek = $_POST['day_of_week'];
-        $startTime = $_POST['start_time'];
-        $endTime = $_POST['end_time'];
-        $slotType = $_POST['slot_type'];
+    if (isset($_POST['save_slot']) || isset($_POST['add_slot'])) {
+        $slotId = isset($_POST['slot_id']) ? (int)$_POST['slot_id'] : 0;
+        $slotDate = isset($_POST['slot_date']) ? trim($_POST['slot_date']) : '';
+        $startTime = isset($_POST['start_time']) ? $_POST['start_time'] : '';
+        $endTime = isset($_POST['end_time']) ? $_POST['end_time'] : '';
+        $slotType = isset($_POST['slot_type']) ? $_POST['slot_type'] : 'available';
+        $timestamp = $slotDate !== '' ? strtotime($slotDate) : false;
+        $dayOfWeek = $timestamp !== false ? strtolower(date('l', $timestamp)) : '';
 
-        try {
-            $stmt = $pdo->prepare("INSERT INTO lawyer_time_slots (lawyer_id, day_of_week, start_time, end_time, slot_type) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$lawyerId, $dayOfWeek, $startTime, $endTime, $slotType]);
-            $message = 'Time slot added successfully!';
-            $messageType = 'success';
-        } catch (PDOException $e) {
-            $message = 'Error adding time slot: ' . htmlspecialchars($e->getMessage());
+        if ($timestamp === false || !in_array($dayOfWeek, $daysOfWeek, true) || empty($startTime) || empty($endTime) || !in_array($slotType, ['available', 'unavailable'], true)) {
+            $message = 'Please provide a valid date, time range, and availability status.';
             $messageType = 'danger';
+        } elseif (strtotime($startTime) >= strtotime($endTime)) {
+            $message = 'End time must be after start time.';
+            $messageType = 'danger';
+        } else {
+            try {
+                if ($slotId > 0) {
+                    $checkStmt = $pdo->prepare("SELECT id FROM lawyer_time_slots WHERE id = ? AND lawyer_id = ?");
+                    $checkStmt->execute([$slotId, $lawyerId]);
+                    if (!$checkStmt->fetch()) {
+                        $message = 'Time slot not found or access denied.';
+                        $messageType = 'danger';
+                    } else {
+                        $stmt = $pdo->prepare("
+                            UPDATE lawyer_time_slots
+                            SET day_of_week = ?, slot_date = ?, start_time = ?, end_time = ?, slot_type = ?
+                            WHERE id = ? AND lawyer_id = ?
+                        ");
+                        $stmt->execute([$dayOfWeek, $slotDate, $startTime, $endTime, $slotType, $slotId, $lawyerId]);
+                        $message = 'Time slot updated successfully!';
+                        $messageType = 'success';
+                    }
+                } else {
+                    $stmt = $pdo->prepare("INSERT INTO lawyer_time_slots (lawyer_id, day_of_week, slot_date, start_time, end_time, slot_type) VALUES (?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([$lawyerId, $dayOfWeek, $slotDate, $startTime, $endTime, $slotType]);
+                    $message = 'Time slot added successfully!';
+                    $messageType = 'success';
+                }
+            } catch (PDOException $e) {
+                $message = 'Error saving time slot: ' . $e->getMessage();
+                $messageType = 'danger';
+            }
         }
     } elseif (isset($_POST['delete_slot'])) {
         $slotId = (int)$_POST['slot_id'];
@@ -38,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = 'Time slot deleted successfully!';
             $messageType = 'success';
         } catch (PDOException $e) {
-            $message = 'Error deleting time slot: ' . htmlspecialchars($e->getMessage());
+            $message = 'Error deleting time slot: ' . $e->getMessage();
             $messageType = 'danger';
         }
     }
@@ -47,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Fetch current time slots
 $timeSlots = [];
 try {
-    $stmt = $pdo->prepare("SELECT * FROM lawyer_time_slots WHERE lawyer_id = ? ORDER BY day_of_week, slot_order, start_time");
+    $stmt = $pdo->prepare("SELECT * FROM lawyer_time_slots WHERE lawyer_id = ? ORDER BY COALESCE(slot_date, '9999-12-31'), day_of_week, slot_order, start_time");
     $stmt->execute([$lawyerId]);
     $timeSlots = $stmt->fetchAll();
 } catch (PDOException $e) {
@@ -61,14 +99,33 @@ if ($message) {
     $messageHtml = '<div class="alert alert-' . htmlspecialchars($messageType) . ' alert-dismissible fade show' . $successClass . '" role="alert">' . htmlspecialchars($message) . '<button type="button" class="btn-close' . $closeClass . '" data-bs-dismiss="alert" aria-label="Close"></button></div>';
 }
 
-$daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+$availabilityEvents = [];
+foreach ($timeSlots as $slot) {
+    $slotDate = isset($slot['slot_date']) ? $slot['slot_date'] : '';
+    if (empty($slotDate)) {
+        continue;
+    }
 
-// Group time slots by day
-$slotsByDay = [];
-foreach ($daysOfWeek as $day) {
-    $slotsByDay[$day] = array_filter($timeSlots, function($slot) use ($day) {
-        return $slot['day_of_week'] === $day;
-    });
+    $slotType = $slot['slot_type'] === 'available' ? 'available' : 'unavailable';
+    $startTime = substr($slot['start_time'], 0, 5);
+    $endTime = substr($slot['end_time'], 0, 5);
+    $availabilityEvents[] = [
+        'id' => (string)$slot['id'],
+        'title' => ucfirst($slotType) . ' - ' . date('g:i A', strtotime($slot['start_time'])) . ' - ' . date('g:i A', strtotime($slot['end_time'])),
+        'start' => $slotDate . 'T' . $startTime . ':00',
+        'end' => $slotDate . 'T' . $endTime . ':00',
+        'backgroundColor' => $slotType === 'available' ? '#2dce89' : '#f5365c',
+        'borderColor' => $slotType === 'available' ? '#2dce89' : '#f5365c',
+        'textColor' => '#ffffff',
+        'extendedProps' => [
+            'slotId' => (int)$slot['id'],
+            'day' => $slot['day_of_week'],
+            'slotDate' => $slotDate,
+            'startTime' => $startTime,
+            'endTime' => $endTime,
+            'slotType' => $slotType
+        ]
+    ];
 }
 
 $html = <<<'HTML'
@@ -86,66 +143,74 @@ $html = <<<'HTML'
     <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
     <link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
 <link href="../assets/css/app-font-montserrat.css?v=2" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/css/simple-calendar.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.10.1/main.min.css" />
     <style>
-        .day-card {
-            transition: all 0.3s ease;
-        }
-        .day-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .time-slot {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 8px 12px;
-            margin: 4px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-        }
-        .time-slot-time {
-            flex: 1;
-        }
-        .time-slot-meta {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-        .time-slot-meta .badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 28px;
-            padding: 0 10px;
-            line-height: 1;
-        }
-        .time-slot-delete-form {
-            display: inline-flex;
-            align-items: center;
-            margin: 0;
-        }
-        .time-slot-delete-btn {
-            width: 28px;
-            height: 28px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            line-height: 1 !important;
-            padding: 0;
-            margin: 0;
-            border-radius: 6px;
-            font-size: 16px;
+        #availabilityCalendar { min-height: 620px; }
+        .fc-event {
+            cursor: pointer;
             font-weight: 700;
+            border-radius: 0.45rem;
+            padding: 2px 4px;
         }
-        .time-slot.available {
-            background: #d4edda;
-            border-left: 4px solid #28a745;
+        .fc .fc-prev-button,
+        .fc .fc-next-button {
+            background: #ffffff !important;
+            border-color: #ffffff !important;
+            color: #344767 !important;
         }
-        .time-slot.unavailable {
-            background: #f8d7da;
-            border-left: 4px solid #dc3545;
+        .fc .fc-prev-button:hover,
+        .fc .fc-next-button:hover,
+        .fc .fc-prev-button:focus,
+        .fc .fc-next-button:focus {
+            background: #f8f9fa !important;
+            border-color: #f8f9fa !important;
+            color: #1f2b4d !important;
+            box-shadow: none !important;
+        }
+        .fc .fc-prev-button .fc-icon,
+        .fc .fc-next-button .fc-icon {
+            color: #344767 !important;
+        }
+        .availability-hero {
+            background: linear-gradient(140deg, rgba(45, 63, 111, 0.08), rgba(111, 127, 210, 0.12));
+            border: 1px solid #dbe4f7;
+            border-radius: 1rem;
+            padding: 1rem;
+        }
+        .availability-fallback-calendar {
+            border: 1px solid #e9ecef;
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+        .availability-fallback-header,
+        .availability-fallback-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(120px, 1fr));
+        }
+        .availability-fallback-header > div {
+            background: #f6f8fc;
+            border-right: 1px solid #e9ecef;
+            border-bottom: 1px solid #e9ecef;
+            color: #344767;
+            font-size: 0.75rem;
+            font-weight: 800;
+            padding: 0.75rem;
+            text-transform: uppercase;
+        }
+        .availability-fallback-day {
+            min-height: 150px;
+            border-right: 1px solid #e9ecef;
+            padding: 0.75rem;
+        }
+        .availability-fallback-event {
+            border-radius: 0.45rem;
+            color: #fff;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+            padding: 0.35rem 0.45rem;
         }
     </style>
 </head>
@@ -263,69 +328,16 @@ $html = <<<'HTML'
                             <p class="text-sm text-muted mb-0">Configure your available time slots for each day of the week</p>
                         </div>
                         <div class="card-body">
-                            <!-- Add Time Slot Form -->
-                            <div class="row mb-4">
-                                <div class="col-12">
-                                    <div class="card bg-light">
-                                        <div class="card-header">
-                                            <h6 class="mb-0">Add Time Slot</h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <form method="POST" action="">
-                                                <div class="row">
-                                                    <div class="col-md-3">
-                                                        <div class="form-group">
-                                                            <label class="form-control-label">Day of Week</label>
-                                                            <select class="form-control" name="day_of_week" required>
-                                                                <option value="">Select day</option>
-                                                                <option value="monday">Monday</option>
-                                                                <option value="tuesday">Tuesday</option>
-                                                                <option value="wednesday">Wednesday</option>
-                                                                <option value="thursday">Thursday</option>
-                                                                <option value="friday">Friday</option>
-                                                                <option value="saturday">Saturday</option>
-                                                                <option value="sunday">Sunday</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-2">
-                                                        <div class="form-group">
-                                                            <label class="form-control-label">Start Time</label>
-                                                            <input type="time" class="form-control" name="start_time" required>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-2">
-                                                        <div class="form-group">
-                                                            <label class="form-control-label">End Time</label>
-                                                            <input type="time" class="form-control" name="end_time" required>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-3">
-                                                        <div class="form-group">
-                                                            <label class="form-control-label">Type</label>
-                                                            <select class="form-control" name="slot_type" required>
-                                                                <option value="available">Available</option>
-                                                                <option value="unavailable">Unavailable (Break)</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-2">
-                                                        <div class="form-group">
-                                                            <label class="form-control-label">&nbsp;</label>
-                                                            <button type="submit" name="add_slot" class="btn btn-primary w-100">Add Slot</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </form>
-                                        </div>
+                            <div class="availability-hero mb-4">
+                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                                    <div>
+                                        <h6 class="mb-1">Availability Calendar</h6>
+                                        <p class="text-sm text-muted mb-0">Click a day to add hours, or click an existing slot to edit it.</p>
                                     </div>
+                                    <button type="button" class="btn btn-primary mb-0" onclick="openAvailabilityModal()">Add Time Slot</button>
                                 </div>
                             </div>
-
-                            <!-- Weekly Schedule -->
-                            <div class="row">
-                                {$weeklySchedule}
-                            </div>
+                            <div id="availabilityCalendar"></div>
                         </div>
                     </div>
                 </div>
@@ -333,57 +345,176 @@ $html = <<<'HTML'
         </div>
     </main>
 
+    <div class="modal fade" id="availabilityModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="availabilityModalTitle">Add Time Slot</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="">
+                    <div class="modal-body">
+                        <input type="hidden" name="save_slot" value="1">
+                        <input type="hidden" name="slot_id" id="slot_id" value="">
+                        <input type="hidden" name="day_of_week" id="day_of_week" value="">
+                        <div class="mb-3">
+                            <label class="form-control-label">Date</label>
+                            <input type="date" class="form-control" name="slot_date" id="slot_date" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-control-label">Start Time</label>
+                                <input type="time" class="form-control" name="start_time" id="start_time" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-control-label">End Time</label>
+                                <input type="time" class="form-control" name="end_time" id="end_time" required>
+                            </div>
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-control-label">Availability Status</label>
+                            <select class="form-control" name="slot_type" id="slot_type" required>
+                                <option value="available">Available for appointments</option>
+                                <option value="unavailable">Unavailable / break</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="availabilitySaveButton">Save Slot</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="../assets/js/core/popper.min.js"></script>
     <script src="../assets/js/core/bootstrap.min.js"></script>
     <script src="../assets/js/plugins/perfect-scrollbar.min.js"></script>
     <script src="../assets/js/plugins/smooth-scrollbar.min.js"></script>
+    <script src="../assets/js/fullcalendar/fallback.js"></script>
     <script src="../assets/js/argon-dashboard.min.js?v=2.1.0"></script>
+    <script>
+        var availabilityEvents = {AVAILABILITY_EVENTS_JSON};
+        var calendarLoaded = false;
+
+        function dayNameFromDate(date) {
+            return ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][date.getDay()];
+        }
+
+        function dateToInputValue(date) {
+            var year = date.getFullYear();
+            var month = String(date.getMonth() + 1).padStart(2, '0');
+            var day = String(date.getDate()).padStart(2, '0');
+            return year + '-' + month + '-' + day;
+        }
+
+        function openAvailabilityModal(day, slotId, slotDate, startTime, endTime, slotType) {
+            document.getElementById('availabilityModalTitle').textContent = slotId ? 'Edit Time Slot' : 'Add Time Slot';
+            document.getElementById('availabilitySaveButton').textContent = slotId ? 'Update Slot' : 'Save Slot';
+            document.getElementById('slot_id').value = slotId || '';
+            document.getElementById('slot_date').value = slotDate || '';
+            document.getElementById('day_of_week').value = day || '';
+            document.getElementById('start_time').value = startTime || '';
+            document.getElementById('end_time').value = endTime || '';
+            document.getElementById('slot_type').value = slotType || 'available';
+            new bootstrap.Modal(document.getElementById('availabilityModal')).show();
+        }
+
+        function initAvailabilityCalendar() {
+            var calendarEl = document.getElementById('availabilityCalendar');
+            if (!calendarEl) return;
+            try {
+                var calendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    headerToolbar: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    },
+                    events: availabilityEvents,
+                    height: 'auto',
+                    eventDisplay: 'block',
+                    dateClick: function(info) {
+                        openAvailabilityModal(dayNameFromDate(info.date), '', dateToInputValue(info.date));
+                    },
+                    eventClick: function(info) {
+                        info.jsEvent.preventDefault();
+                        var props = info.event.extendedProps || {};
+                        openAvailabilityModal(props.day, props.slotId || info.event.id, props.slotDate || '', props.startTime, props.endTime, props.slotType);
+                    },
+                    eventDidMount: function(info) {
+                        info.el.setAttribute('title', 'Click to edit this time slot');
+                    }
+                });
+                calendar.render();
+            } catch (error) {
+                renderAvailabilityFallbackCalendar();
+            }
+        }
+
+        function renderAvailabilityFallbackCalendar() {
+            var calendarEl = document.getElementById('availabilityCalendar');
+            if (!calendarEl) return;
+            var dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            var html = '<div class="availability-fallback-calendar"><div class="availability-fallback-header">';
+            dayNames.forEach(function(dayName) { html += '<div>' + dayName + '</div>'; });
+            html += '</div><div class="availability-fallback-grid">';
+            dayNames.forEach(function(dayName, dayIndex) {
+                html += '<div class="availability-fallback-day">';
+                var eventsForDay = availabilityEvents.filter(function(event) {
+                    return event.start && new Date(event.start).getDay() === dayIndex;
+                });
+                if (eventsForDay.length === 0) {
+                    html += '<p class="text-sm text-muted mb-0">No hours set</p>';
+                } else {
+                    eventsForDay.forEach(function(event) {
+                        var props = event.extendedProps || {};
+                        html += '<div class="availability-fallback-event" style="background-color:' + event.backgroundColor + '" onclick="openAvailabilityModal(\'' + props.day + '\', \'' + (props.slotId || event.id) + '\', \'' + (props.slotDate || '') + '\', \'' + props.startTime + '\', \'' + props.endTime + '\', \'' + props.slotType + '\')">' + event.title + '</div>';
+                    });
+                }
+                html += '</div>';
+            });
+            html += '</div></div>';
+            calendarEl.innerHTML = html;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var slotDateInput = document.getElementById('slot_date');
+            if (slotDateInput) {
+                slotDateInput.addEventListener('change', function() {
+                    if (this.value) {
+                        var parts = this.value.split('-').map(Number);
+                        document.getElementById('day_of_week').value = dayNameFromDate(new Date(parts[0], parts[1] - 1, parts[2]));
+                    }
+                });
+            }
+
+            if (typeof FullCalendar !== 'undefined') {
+                calendarLoaded = true;
+                initAvailabilityCalendar();
+            } else {
+                var script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.10.1/main.min.js';
+                script.onload = function() {
+                    calendarLoaded = true;
+                    initAvailabilityCalendar();
+                };
+                script.onerror = renderAvailabilityFallbackCalendar;
+                document.head.appendChild(script);
+                setTimeout(function() {
+                    if (!calendarLoaded) renderAvailabilityFallbackCalendar();
+                }, 3500);
+            }
+        });
+    </script>
 </body>
 </html>
 HTML;
 
-// Generate weekly schedule HTML
-$weeklySchedule = '';
-foreach ($daysOfWeek as $day) {
-    $dayName = ucfirst($day);
-    $slots = $slotsByDay[$day];
-
-    $scheduleHtml = '';
-    if (empty($slots)) {
-        $scheduleHtml = '<p class="text-muted mb-0">No time slots set</p>';
-    } else {
-        foreach ($slots as $slot) {
-            $slotClass = $slot['slot_type'] === 'available' ? 'available' : 'unavailable';
-            $deleteBtn = '<form method="POST" class="time-slot-delete-form">
-                            <input type="hidden" name="slot_id" value="' . $slot['id'] . '">
-                            <button type="submit" name="delete_slot" class="btn btn-sm btn-danger btn-color-danger time-slot-delete-btn" onclick="return confirm(\'Delete this time slot?\')" aria-label="Delete time slot">&times;</button>
-                          </form>';
-
-            $scheduleHtml .= '<div class="time-slot ' . $slotClass . '">
-                                <span class="time-slot-time"><strong>' . date('g:i A', strtotime($slot['start_time'])) . ' - ' . date('g:i A', strtotime($slot['end_time'])) . '</strong></span>
-                                <span class="time-slot-meta">
-                                    <span class="badge ' . ($slot['slot_type'] === 'available' ? 'bg-success' : 'bg-danger') . '">' . ucfirst($slot['slot_type']) . '</span>
-                                    ' . $deleteBtn . '
-                                </span>
-                              </div>';
-        }
-    }
-
-    $weeklySchedule .= '<div class="col-md-6 col-lg-4 mb-4">
-                            <div class="card day-card h-100">
-                                <div class="card-header">
-                                    <h6 class="mb-0">' . $dayName . '</h6>
-                                </div>
-                                <div class="card-body">
-                                    ' . $scheduleHtml . '
-                                </div>
-                            </div>
-                        </div>';
-}
-
 $html = str_replace('{$message}', $messageHtml, $html);
 $html = str_replace('{$lawyerName}', htmlspecialchars($_SESSION['lawyer_name']), $html);
-$html = str_replace('{$weeklySchedule}', $weeklySchedule, $html);
+$html = str_replace('{AVAILABILITY_EVENTS_JSON}', json_encode($availabilityEvents), $html);
 
 echo $html;
 ?>
