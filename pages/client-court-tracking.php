@@ -116,6 +116,7 @@ if (!empty($_SESSION['error_message'])) {
     <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
     <link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
 <link href="../assets/css/app-font-montserrat.css?v=4" rel="stylesheet" />
+<link href="../assets/css/legalpro-client-portal.css?v=1" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/css/simple-calendar.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.10.1/main.min.css" />
     <style>
@@ -266,8 +267,8 @@ if (!empty($_SESSION['error_message'])) {
         .status-postponed { background-color: #fb6340; color: #fff; }
     </style>
 </head>
-<body class="g-sidenav-show bg-gray-100 legalpro-lawyer-portal client-court-tracking-page">
-    <div class="min-height-300 bg-legalpro-lawyer position-absolute w-100"></div>
+<body class="g-sidenav-show bg-gray-100 client-court-tracking-page">
+    <div class="min-height-300 bg-legalpro-client position-absolute w-100"></div>
     <aside class="sidenav bg-white navbar navbar-vertical navbar-expand-xs border-0 border-radius-xl my-3 fixed-start ms-4" id="sidenav-main">
         <div class="sidenav-header">
             <i class="fas fa-times p-3 cursor-pointer text-secondary opacity-5 position-absolute end-0 top-0 d-none d-xl-none" aria-hidden="true" id="iconSidenav"></i>
@@ -503,9 +504,7 @@ if (!empty($_SESSION['error_message'])) {
                                                         <?php echo $rowStatusBadge; ?>
                                                     </td>
                                                     <td class="align-middle text-end pe-4">
-                                                        <button type="button" class="btn btn-sm btn-outline-primary mb-0" onclick="viewCourtDate(<?php echo (int) $date['id']; ?>)" title="View details">
-                                                            Details
-                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-primary mb-0" onclick="viewCourtDate(<?php echo (int) $date['id']; ?>)" title="View">View</button>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>

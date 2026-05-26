@@ -372,6 +372,7 @@ $html = <<<'HTML'
     <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
     <link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
 <link href="../assets/css/app-font-montserrat.css?v=4" rel="stylesheet" />
+<link href="../assets/css/legalpro-client-portal.css?v=1" rel="stylesheet" />
 
     <style>
         .cc-comments-panel .card-header { border-bottom: 1px solid rgba(0,0,0,.06); }
@@ -446,8 +447,8 @@ $html = <<<'HTML'
         }
     </style>
 </head>
-<body class="g-sidenav-show bg-gray-100 legalpro-lawyer-portal client-portal-page">
-    <div class="min-height-300 bg-legalpro-lawyer position-absolute w-100"></div>
+<body class="g-sidenav-show bg-gray-100 client-portal-page">
+    <div class="min-height-300 bg-legalpro-client position-absolute w-100"></div>
     <aside class="sidenav bg-white navbar navbar-vertical navbar-expand-xs border-0 border-radius-xl my-3 fixed-start ms-4" id="sidenav-main">
         <div class="sidenav-header">
             <i class="fas fa-times p-3 cursor-pointer text-secondary opacity-5 position-absolute end-0 top-0 d-none d-xl-none" aria-hidden="true" id="iconSidenav"></i>
