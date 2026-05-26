@@ -87,6 +87,54 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'appointment_details') {
     exit;
 }
 
+/**
+ * Block booking when the lawyer has published availability but the slot does not match.
+ *
+ * @return array{ok: bool, message?: string}
+ */
+function validateLawyerBookingAvailability(PDO $pdo, int $lawyerId, string $appointmentDate, string $appointmentTime): array
+{
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) FROM lawyer_time_slots
+        WHERE lawyer_id = ? AND slot_type = 'available'
+    ");
+    $stmt->execute([$lawyerId]);
+    if ((int) $stmt->fetchColumn() === 0) {
+        return ['ok' => true];
+    }
+
+    $dayOfWeek = strtolower(date('l', strtotime($appointmentDate)));
+    $requestedTime = preg_match('/^\d{2}:\d{2}$/', $appointmentTime) ? $appointmentTime . ':00' : $appointmentTime;
+
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) FROM lawyer_time_slots
+        WHERE lawyer_id = ? AND day_of_week = ? AND slot_type = 'available'
+    ");
+    $stmt->execute([$lawyerId, $dayOfWeek]);
+    if ((int) $stmt->fetchColumn() === 0) {
+        return [
+            'ok' => false,
+            'message' => 'Your lawyer is not available on the selected date. Please reschedule to another date.',
+        ];
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT id FROM lawyer_time_slots
+        WHERE lawyer_id = ? AND day_of_week = ? AND slot_type = 'available'
+        AND start_time <= ? AND end_time > ?
+        LIMIT 1
+    ");
+    $stmt->execute([$lawyerId, $dayOfWeek, $requestedTime, $requestedTime]);
+    if (!$stmt->fetch()) {
+        return [
+            'ok' => false,
+            'message' => 'Your lawyer is not available at the selected time. Please reschedule to another date or choose an available time slot.',
+        ];
+    }
+
+    return ['ok' => true];
+}
+
 $message = '';
 $messageType = '';
 
@@ -146,39 +194,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = 'Invalid case selected.';
                 $messageType = 'danger';
             } else {
-                // Check if the lawyer is available at the requested time
-                $availabilityCheckPassed = true;
+                $availabilityResult = validateLawyerBookingAvailability($pdo, $lawyer_id, $appointment_date, $appointment_time);
 
-                if (!empty($lawyer_id)) {
-                    $stmt = $pdo->prepare("
-                        SELECT COUNT(*) FROM lawyer_time_slots
-                        WHERE lawyer_id = ? AND slot_type = 'available'
-                    ");
-                    $stmt->execute([$lawyer_id]);
-                    $hasAvailabilitySlots = (int) $stmt->fetchColumn() > 0;
-
-                    if ($hasAvailabilitySlots) {
-                        $dayOfWeek = strtolower(date('l', strtotime($appointment_date)));
-                        $requestedTime = $appointment_time . ':00';
-
-                        $stmt = $pdo->prepare("
-                            SELECT * FROM lawyer_time_slots
-                            WHERE lawyer_id = ? AND day_of_week = ? AND slot_type = 'available'
-                            AND start_time <= ? AND end_time > ?
-                            ORDER BY start_time
-                        ");
-                        $stmt->execute([$lawyer_id, $dayOfWeek, $requestedTime, $requestedTime]);
-                        $availability = $stmt->fetch();
-
-                        if (!$availability) {
-                            $availabilityCheckPassed = false;
-                            $message = 'Lawyer not available at the selected date and time. Please choose a different time.';
-                            $messageType = 'danger';
-                        }
-                    }
-                }
-
-                if ($availabilityCheckPassed) {
+                if (!$availabilityResult['ok']) {
+                    $message = $availabilityResult['message'];
+                    $messageType = 'danger';
+                } else {
                     $startDateTime = $appointment_date . ' ' . $appointment_time . ':00';
                     $endDateTime = date('Y-m-d H:i:s', strtotime($startDateTime . ' +1 hour')); // Assume 1 hour duration
 
@@ -400,6 +421,23 @@ foreach ($availableLawyers as $lawyer) {
     } catch (PDOException $e) {
         // Continue without availability data
     }
+}
+
+$lawyerHasAvailability = [];
+foreach ($availableLawyers as $lawyer) {
+    $hasAvailable = false;
+    $lawyerId = (int) $lawyer['id'];
+    if (!empty($lawyerAvailability[$lawyerId])) {
+        foreach ($lawyerAvailability[$lawyerId] as $daySlots) {
+            foreach ($daySlots as $slot) {
+                if (($slot['type'] ?? '') === 'available') {
+                    $hasAvailable = true;
+                    break 2;
+                }
+            }
+        }
+    }
+    $lawyerHasAvailability[$lawyerId] = $hasAvailable;
 }
 
 // Build lawyer options
@@ -719,13 +757,13 @@ $html = <<<'HTML'
                                         <option value="16:00" class="time-option">4:00 PM</option>
                                         <option value="17:00" class="time-option">5:00 PM</option>
                                     </select>
-                                    <small class="text-muted">Green slots match the lawyer’s published availability.</small>
+                                    <small class="text-muted">Only green times can be booked. If your lawyer is unavailable, pick another date.</small>
                                 </div>
                                 <div class="form-group mb-3">
                                     <label class="form-control-label">Notes <span class="text-muted font-weight-normal">(optional)</span></label>
                                     <textarea class="form-control" name="notes" rows="3" placeholder="Topics you want to cover…"></textarea>
                                 </div>
-                                <button type="submit" class="btn btn-primary w-100 mb-0 font-weight-bold border-radius-lg">Request appointment</button>
+                                <button type="submit" id="bookAppointmentBtn" class="btn btn-primary w-100 mb-0 font-weight-bold border-radius-lg">Request appointment</button>
                             </form>
                         </div>
                     </div>
@@ -757,7 +795,43 @@ $html = <<<'HTML'
 
     <script>
         const lawyerAvailability = {$lawyerAvailabilityJson};
+        const lawyerHasAvailability = {$lawyerHasAvailabilityJson};
         let appointmentModalInstance = null;
+
+        function lawyerHasPublishedSchedule(lawyerId) {
+            return !!(lawyerHasAvailability[lawyerId] || lawyerHasAvailability[String(lawyerId)]);
+        }
+
+        function getDayOfWeekFromDate(dateValue) {
+            const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const date = new Date(dateValue + 'T00:00:00');
+            return days[date.getDay()];
+        }
+
+        function getAvailableSlotsForDay(lawyerId, dayOfWeek) {
+            const lawyerSlots = lawyerAvailability[lawyerId] || lawyerAvailability[String(lawyerId)] || {};
+            const daySlots = lawyerSlots[dayOfWeek] || [];
+            return daySlots.filter(function(slot) { return slot.type === 'available'; });
+        }
+
+        function isTimeWithinAvailableSlots(timeValue, availableSlots) {
+            if (!timeValue || !availableSlots.length) {
+                return false;
+            }
+            const optionTime = timeValue.length === 5 ? timeValue + ':00' : timeValue;
+            return availableSlots.some(function(slot) {
+                return optionTime >= slot.start && optionTime < slot.end;
+            });
+        }
+
+        function setBookButtonEnabled(enabled) {
+            const btn = document.getElementById('bookAppointmentBtn');
+            if (!btn) {
+                return;
+            }
+            btn.disabled = !enabled;
+            btn.title = enabled ? '' : 'Select a date and time when your lawyer is available';
+        }
 
         function escapeHtml(text) {
             const el = document.createElement('div');
@@ -855,72 +929,63 @@ $html = <<<'HTML'
             const dateInput = document.getElementById('appointment_date');
             const timeSelect = document.getElementById('appointment_time');
             const dateMessageDiv = document.getElementById('dateAvailabilityMessage');
-
-            // Reset all time options to default state
             const timeOptions = timeSelect.querySelectorAll('.time-option');
-            timeOptions.forEach(option => {
+
+            timeOptions.forEach(function(option) {
                 option.classList.remove('text-success', 'font-weight-bold');
                 option.disabled = false;
             });
 
-            // Hide date message
             dateMessageDiv.style.display = 'none';
             dateMessageDiv.innerHTML = '';
+            setBookButtonEnabled(true);
 
             if (!lawyerId) {
+                setBookButtonEnabled(false);
+                return;
+            }
+
+            if (!lawyerHasPublishedSchedule(lawyerId)) {
+                dateMessageDiv.style.display = 'block';
+                dateMessageDiv.innerHTML = '<div class="alert alert-info py-2 mb-0"><i class="ni ni-info-16"></i> This lawyer has not published availability yet. You may still request a time, or contact your legal team.</div>';
                 return;
             }
 
             if (!dateInput.value) {
                 dateMessageDiv.style.display = 'block';
                 dateMessageDiv.innerHTML = '<div class="alert alert-info py-2 mb-0"><i class="ni ni-info-16"></i> Select a date to see available times.</div>';
+                setBookButtonEnabled(false);
                 return;
             }
 
-            const date = new Date(dateInput.value + 'T00:00:00');
-            const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            const dayOfWeek = days[date.getDay()];
+            const dayOfWeek = getDayOfWeekFromDate(dateInput.value);
+            const availableSlots = getAvailableSlotsForDay(lawyerId, dayOfWeek);
 
-            const lawyerSlots = lawyerAvailability[lawyerId] || lawyerAvailability[String(lawyerId)] || {};
-            const daySlots = lawyerSlots[dayOfWeek] || [];
-            const availableSlots = daySlots.filter(function(slot) { return slot.type === 'available'; });
+            if (availableSlots.length === 0) {
+                timeOptions.forEach(function(option) {
+                    if (option.value) {
+                        option.disabled = true;
+                    }
+                });
+                timeSelect.value = '';
+                dateMessageDiv.style.display = 'block';
+                dateMessageDiv.innerHTML = '<div class="alert alert-warning py-2 mb-0"><i class="ni ni-info-16"></i> Your lawyer is not available on this date. Please reschedule to another date.</div>';
+                setBookButtonEnabled(false);
+                return;
+            }
 
-                // If no availability slots are set up for this lawyer, allow all times
-                // This ensures backward compatibility if time slots haven't been configured
-                if (availableSlots.length === 0) {
-                    // No availability slots configured - allow all times (backward compatibility)
-                    dateMessageDiv.style.display = 'block';
-                    dateMessageDiv.innerHTML = '<div class="alert alert-info py-2"><i class="ni ni-info-16"></i> Lawyer availability not configured - all times shown.</div>';
-
-                    // Enable all time options
-                    timeOptions.forEach(option => {
-                        option.classList.remove('text-success', 'font-weight-bold');
-                        option.disabled = false;
-                    });
+            let hasAvailableTimes = false;
+            timeOptions.forEach(function(option) {
+                if (!option.value) {
                     return;
                 }
 
-            // Enable and highlight available time slots
-            let hasAvailableTimes = false;
-            timeOptions.forEach(option => {
-                if (option.value) {
-                    const optionTime = option.value + ':00';
-                    let isAvailable = false;
-
-                    // Check if this time falls within any available slot
-                    availableSlots.forEach(slot => {
-                        if (optionTime >= slot.start && optionTime < slot.end) {
-                            isAvailable = true;
-                        }
-                    });
-
-                    if (isAvailable) {
-                        option.classList.add('text-success', 'font-weight-bold');
-                        option.disabled = false;
-                        hasAvailableTimes = true;
-                    } else {
-                        option.disabled = true;
-                    }
+                if (isTimeWithinAvailableSlots(option.value, availableSlots)) {
+                    option.classList.add('text-success', 'font-weight-bold');
+                    option.disabled = false;
+                    hasAvailableTimes = true;
+                } else {
+                    option.disabled = true;
                 }
             });
 
@@ -931,16 +996,35 @@ $html = <<<'HTML'
 
             if (!hasAvailableTimes) {
                 dateMessageDiv.style.display = 'block';
-                dateMessageDiv.innerHTML = '<div class="alert alert-warning py-2 mb-0"><i class="ni ni-info-16"></i> No available times for the selected date.</div>';
+                dateMessageDiv.innerHTML = '<div class="alert alert-warning py-2 mb-0"><i class="ni ni-info-16"></i> No available times on this date. Please reschedule to another date.</div>';
+                setBookButtonEnabled(false);
+                return;
+            }
+
+            if (!timeSelect.value || (selected && selected.disabled)) {
+                setBookButtonEnabled(false);
             }
         }
 
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('lawyer_id').addEventListener('change', loadLawyerAvailability);
             document.getElementById('appointment_date').addEventListener('change', loadTimeAvailability);
+            document.getElementById('appointment_time').addEventListener('change', function() {
+                const lawyerId = document.getElementById('lawyer_id').value;
+                const dateValue = document.getElementById('appointment_date').value;
+                const timeValue = document.getElementById('appointment_time').value;
+
+                if (!lawyerId || !dateValue || !timeValue || !lawyerHasPublishedSchedule(lawyerId)) {
+                    setBookButtonEnabled(!!lawyerId && !!dateValue && !!timeValue);
+                    return;
+                }
+
+                const availableSlots = getAvailableSlotsForDay(lawyerId, getDayOfWeekFromDate(dateValue));
+                setBookButtonEnabled(isTimeWithinAvailableSlots(timeValue, availableSlots));
+            });
+            loadLawyerAvailability();
         });
 
-        // Form validation before submission
         function validateAppointmentForm() {
             const lawyerId = document.getElementById('lawyer_id').value;
             const caseId = document.getElementById('case_id').value;
@@ -949,7 +1033,6 @@ $html = <<<'HTML'
             const selectedTime = timeSelect.value;
             const selectedOption = timeSelect.querySelector('option[value="' + selectedTime + '"]');
 
-            // Check required fields
             if (!lawyerId) {
                 alert('Please select a lawyer.');
                 return false;
@@ -970,10 +1053,23 @@ $html = <<<'HTML'
                 return false;
             }
 
-            // Check if selected time is disabled
             if (selectedOption && selectedOption.disabled) {
-                alert('The selected time is not available. Please choose a different time.');
+                alert('The selected time is not available. Please reschedule to another date or choose an available time.');
                 return false;
+            }
+
+            if (lawyerHasPublishedSchedule(lawyerId)) {
+                const availableSlots = getAvailableSlotsForDay(lawyerId, getDayOfWeekFromDate(dateInput));
+
+                if (availableSlots.length === 0) {
+                    alert('Your lawyer is not available on the selected date. Please reschedule to another date.');
+                    return false;
+                }
+
+                if (!isTimeWithinAvailableSlots(selectedTime, availableSlots)) {
+                    alert('Your lawyer is not available at the selected time. Please reschedule to another date or choose an available time slot.');
+                    return false;
+                }
             }
 
             return true;
@@ -990,6 +1086,7 @@ $html = str_replace('{APPOINTMENTS_ROWS}', $appointmentsRows, $html);
 $html = str_replace('{CASE_OPTIONS}', $caseOptions, $html);
 $html = str_replace('{LAWYER_OPTIONS}', $lawyerOptions, $html);
 $html = str_replace('{$lawyerAvailabilityJson}', json_encode($lawyerAvailability), $html);
+$html = str_replace('{$lawyerHasAvailabilityJson}', json_encode($lawyerHasAvailability), $html);
 $html = str_replace('{MIN_DATE}', date('Y-m-d'), $html);
 $html = str_replace('{APPT_TOTAL}', (string) $apptTotal, $html);
 $html = str_replace('{APPT_PENDING}', (string) $apptPending, $html);
