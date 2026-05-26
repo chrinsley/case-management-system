@@ -7,7 +7,7 @@ if (!isset($_SESSION['lawyer_id'])) {
     header('Location: lawyer-login.php');
     exit;
 }
-
+Lorem ipsum dolor sit amet consectetur adipisicing elit. Dolores, quisquam ipsam eaque optio autem eum officiis ullam delectus beatae inventore deserunt voluptatibus nesciunt quas commodi similique vel earum quidem! Consectetur.
 $lawyerId = $_SESSION['lawyer_id'];
 $message = '';
 $messageType = '';
