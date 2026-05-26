@@ -187,6 +187,8 @@ $html = <<<'HTML'
 </html>
 HTML;
 
+$html = str_replace('$24,300', formatCurrency(24300), $html);
+
 // rewrite internal links from .html to .php
 $html = preg_replace('/href="([^"\']+)\.html"/i', 'href="$1.php"', $html);
 ob_start(); include __DIR__ . '/../inc/menunav.php'; $sidebar = ob_get_clean();

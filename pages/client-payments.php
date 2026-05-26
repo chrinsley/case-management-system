@@ -127,10 +127,10 @@ if (empty($invoices)) {
                 <p class="text-xs font-weight-bold mb-0">' . date('M j, Y', strtotime($invoice['due_date'])) . '</p>
             </td>
             <td class="text-end">
-                <span class="text-xs font-weight-bold">Rs ' . number_format($invoice['amount'], 2) . '</span>
+                <span class="text-xs font-weight-bold">' . formatCurrency($invoice['amount']) . '</span>
             </td>
             <td class="text-end">
-                <span class="text-xs font-weight-bold">Rs ' . number_format($invoice['paid_amount'], 2) . '</span>
+                <span class="text-xs font-weight-bold">' . formatCurrency($invoice['paid_amount']) . '</span>
             </td>
             <td class="align-middle text-center pe-4">
                 ' . $statusBadge . '
@@ -173,7 +173,7 @@ if (empty($payments)) {
                 <p class="text-xs font-weight-bold mb-0">' . date('M j, Y', strtotime($payment['payment_date'])) . '</p>
             </td>
             <td>
-                <span class="text-xs font-weight-bold">Rs ' . number_format($payment['amount'], 2) . '</span>
+                <span class="text-xs font-weight-bold">' . formatCurrency($payment['amount']) . '</span>
             </td>
             <td>
                 <span class="text-xs font-weight-bold">' . htmlspecialchars(ucfirst($payment['method'])) . '</span>
@@ -424,15 +424,15 @@ $html = <<<'HTML'
                             <div class="d-flex flex-wrap gap-3 justify-content-lg-end">
                                 <div class="cp-hero-pill">
                                     <p class="cp-hero-pill-label text-xs mb-0">Invoiced</p>
-                                    <p class="cp-hero-pill-value font-weight-bolder mb-0" style="font-size: 1.1rem;">Rs {TOTAL_INVOICED}</p>
+                                    <p class="cp-hero-pill-value font-weight-bolder mb-0" style="font-size: 1.1rem;">{TOTAL_INVOICED}</p>
                                 </div>
                                 <div class="cp-hero-pill">
                                     <p class="cp-hero-pill-label text-xs mb-0">Paid</p>
-                                    <p class="cp-hero-pill-value font-weight-bolder mb-0" style="font-size: 1.1rem;">Rs {TOTAL_PAID}</p>
+                                    <p class="cp-hero-pill-value font-weight-bolder mb-0" style="font-size: 1.1rem;">{TOTAL_PAID}</p>
                                 </div>
                                 <div class="cp-hero-pill">
                                     <p class="cp-hero-pill-label text-xs mb-0">Outstanding</p>
-                                    <p class="cp-hero-pill-value font-weight-bolder mb-0" style="font-size: 1.1rem;">Rs {TOTAL_OUTSTANDING}</p>
+                                    <p class="cp-hero-pill-value font-weight-bolder mb-0" style="font-size: 1.1rem;">{TOTAL_OUTSTANDING}</p>
                                 </div>
                                 <div class="cp-hero-pill">
                                     <p class="cp-hero-pill-label text-xs mb-0">Overdue</p>
@@ -521,9 +521,9 @@ HTML;
 // Replace placeholders
 $html = str_replace('{MESSAGE}', $messageHtml, $html);
 $html = str_replace('{CLIENT_NAME}', htmlspecialchars($client_name), $html);
-$html = str_replace('{TOTAL_INVOICED}', number_format($totalInvoiced, 2), $html);
-$html = str_replace('{TOTAL_PAID}', number_format($totalPaid, 2), $html);
-$html = str_replace('{TOTAL_OUTSTANDING}', number_format($totalOutstanding, 2), $html);
+$html = str_replace('{TOTAL_INVOICED}', formatCurrency($totalInvoiced), $html);
+$html = str_replace('{TOTAL_PAID}', formatCurrency($totalPaid), $html);
+$html = str_replace('{TOTAL_OUTSTANDING}', formatCurrency($totalOutstanding), $html);
 $html = str_replace('{INVOICES_ROWS}', $invoicesRows, $html);
 $html = str_replace('{PAYMENTS_ROWS}', $paymentsRows, $html);
 $html = str_replace('{INVOICE_COUNT}', (string) $invoiceCount, $html);

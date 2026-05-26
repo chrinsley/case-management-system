@@ -80,19 +80,38 @@ function setSetting($key, $value) {
     }
 }
 
+function getDefaultCurrencyCode() {
+    return 'MUR';
+}
+
 function getCurrencyOptions() {
     return [
+        'MUR' => ['label' => 'Rupee (Rs)', 'symbol' => 'Rs', 'prefix' => true],
         'USD' => ['label' => 'US Dollar ($)', 'symbol' => '$', 'prefix' => true],
         'EUR' => ['label' => 'Euro (€)', 'symbol' => '€', 'prefix' => true],
-        'MUR' => ['label' => 'Mauritian Rupee (Rs)', 'symbol' => 'Rs', 'prefix' => true],
     ];
 }
 
+function ensureCurrencyDefault() {
+    static $initialized = false;
+    if ($initialized) {
+        return;
+    }
+    $initialized = true;
+    $defaultCode = getDefaultCurrencyCode();
+    $current = getSetting('currency', null);
+    if ($current === null || $current === '' || strtoupper((string) $current) === 'USD') {
+        setSetting('currency', $defaultCode);
+    }
+}
+
 function getCurrencyConfig() {
+    ensureCurrencyDefault();
     $options = getCurrencyOptions();
-    $code = strtoupper((string) getSetting('currency', 'USD'));
+    $defaultCode = getDefaultCurrencyCode();
+    $code = strtoupper((string) getSetting('currency', $defaultCode));
     if (!isset($options[$code])) {
-        $code = 'USD';
+        $code = $defaultCode;
     }
     return ['code' => $code] + $options[$code];
 }

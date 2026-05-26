@@ -658,6 +658,18 @@ $html = <<<'HTML'
 </html>
 HTML;
 
+$html = str_replace(
+    [
+        '$24,300', '$9,120', '$15,180', '$3,740',
+        '$1,200', '$2,540', '$320', '$2,800',
+    ],
+    [
+        formatCurrency(24300), formatCurrency(9120), formatCurrency(15180), formatCurrency(3740),
+        formatCurrency(1200), formatCurrency(2540), formatCurrency(320), formatCurrency(2800),
+    ],
+    $html
+);
+
 // rewrite internal links from .html to .php
 $html = preg_replace('/href="([^"\']+)\.html"/i', 'href="$1.php"', $html);
 ob_start(); include __DIR__ . '/../inc/menunav.php'; $sidebar = ob_get_clean();

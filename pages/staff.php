@@ -181,6 +181,12 @@ $html = <<<'HTML'
 </html>
 HTML;
 
+$html = str_replace(
+    ['$3,200', '$400', '$120'],
+    [formatCurrency(3200), formatCurrency(400), formatCurrency(120)],
+    $html
+);
+
 // rewrite internal links from .html to .php
 $html = preg_replace('/href="([^"\']+)\.html"/i', 'href="$1.php"', $html);
 // change visible 'Dashboard' text to 'Menu' in navigation

@@ -546,19 +546,19 @@ $html = <<<'HTML'
                                 <div class="col-md-4">
                                     <div class="border rounded p-3 text-center mb-3">
                                         <p class="text-xs text-muted mb-1">Total Fee</p>
-                                        <h5 class="mb-0" id="ledger-fee">$0.00</h5>
+                                        <h5 class="mb-0" id="ledger-fee">{CURRENCY_ZERO}</h5>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="border rounded p-3 text-center mb-3">
                                         <p class="text-xs text-muted mb-1">Paid</p>
-                                        <h5 class="mb-0 text-success" id="ledger-paid">$0.00</h5>
+                                        <h5 class="mb-0 text-success" id="ledger-paid">{CURRENCY_ZERO}</h5>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="border rounded p-3 text-center mb-3">
                                         <p class="text-xs text-muted mb-1">Balance</p>
-                                        <h5 class="mb-0 text-warning" id="ledger-balance">$0.00</h5>
+                                        <h5 class="mb-0 text-warning" id="ledger-balance">{CURRENCY_ZERO}</h5>
                                     </div>
                                 </div>
                             </div>
