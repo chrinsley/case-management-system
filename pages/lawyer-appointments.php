@@ -11,25 +11,100 @@ if (!isset($_SESSION['lawyer_id'])) {
 $lawyerId = $_SESSION['lawyer_id'];
 $lawyerName = $_SESSION['lawyer_name'];
 
-// Handle appointment status updates
+$message = '';
+$messageType = '';
+
+if (isset($_GET['msg'])) {
+    $message = urldecode((string) $_GET['msg']);
+    $messageType = isset($_GET['type']) ? (string) $_GET['type'] : 'info';
+}
+
+// Handle appointment status updates and rescheduling
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appointment_action'])) {
-    $appointmentId = (int)$_POST['appointment_id'];
-    $action = $_POST['appointment_action'];
+    $appointmentId = (int) ($_POST['appointment_id'] ?? 0);
+    $action = (string) $_POST['appointment_action'];
+    $allowedActions = ['accept', 'reject', 'pending', 'reschedule'];
 
-    if (in_array($action, ['accept', 'reject'])) {
-        $status = ($action === 'accept') ? 'accepted' : 'rejected';
-
+    if ($appointmentId && in_array($action, $allowedActions, true)) {
         try {
-            $stmt = $pdo->prepare("UPDATE appointments SET status = ? WHERE id = ? AND lawyer_id = ?");
-            $stmt->execute([$status, $appointmentId, $lawyerId]);
+            $stmt = $pdo->prepare("SELECT * FROM appointments WHERE id = ? AND lawyer_id = ?");
+            $stmt->execute([$appointmentId, $lawyerId]);
+            $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            $message = "Appointment " . ($action === 'accept' ? 'accepted' : 'rejected') . ' successfully.';
-            $messageType = 'success';
+            if (!$appointment) {
+                $message = 'Appointment not found or you do not have permission to update it.';
+                $messageType = 'danger';
+            } elseif ($action === 'reschedule') {
+                $newDate = trim((string) ($_POST['reschedule_date'] ?? ''));
+                $newTime = trim((string) ($_POST['reschedule_time'] ?? ''));
+                $rescheduleNotes = trim((string) ($_POST['reschedule_notes'] ?? ''));
+                $newStatus = strtolower(trim((string) ($_POST['reschedule_status'] ?? 'pending')));
+
+                if (!in_array($newStatus, ['pending', 'accepted'], true)) {
+                    $newStatus = 'pending';
+                }
+
+                if ($newDate === '' || $newTime === '') {
+                    $message = 'Please provide a new date and time to reschedule.';
+                    $messageType = 'danger';
+                } else {
+                    $startsAt = $newDate . ' ' . (preg_match('/^\d{2}:\d{2}$/', $newTime) ? $newTime . ':00' : $newTime);
+                    $endsAt = date('Y-m-d H:i:s', strtotime($startsAt . ' +1 hour'));
+                    $notes = (string) ($appointment['notes'] ?? '');
+                    if ($rescheduleNotes !== '') {
+                        $notes = trim(($notes !== '' ? $notes . "\n\n" : '') . '[Rescheduled by lawyer] ' . $rescheduleNotes);
+                    }
+
+                    $stmt = $pdo->prepare("
+                        UPDATE appointments
+                        SET starts_at = ?, ends_at = ?, status = ?, notes = ?
+                        WHERE id = ? AND lawyer_id = ?
+                    ");
+                    $stmt->execute([$startsAt, $endsAt, $newStatus, $notes, $appointmentId, $lawyerId]);
+
+                    $message = 'Appointment rescheduled successfully.';
+                    $messageType = 'success';
+                }
+            } else {
+                $statusMap = [
+                    'accept' => 'accepted',
+                    'reject' => 'rejected',
+                    'pending' => 'pending',
+                ];
+                $status = $statusMap[$action];
+                $stmt = $pdo->prepare("UPDATE appointments SET status = ? WHERE id = ? AND lawyer_id = ?");
+                $stmt->execute([$status, $appointmentId, $lawyerId]);
+
+                $labelMap = [
+                    'accept' => 'accepted',
+                    'reject' => 'rejected',
+                    'pending' => 'marked as pending',
+                ];
+                $message = 'Appointment ' . $labelMap[$action] . ' successfully.';
+                $messageType = 'success';
+            }
         } catch (PDOException $e) {
             $message = 'Error updating appointment: ' . htmlspecialchars($e->getMessage());
             $messageType = 'danger';
         }
+    } else {
+        $message = 'Invalid appointment action.';
+        $messageType = 'danger';
     }
+
+    if ($message !== '') {
+        header('Location: lawyer-appointments.php?msg=' . urlencode($message) . '&type=' . urlencode($messageType));
+        exit;
+    }
+}
+
+$messageHtml = '';
+if ($message !== '') {
+    $successClass = ($messageType === 'success') ? ' text-white' : '';
+    $closeClass = ($messageType === 'success') ? ' btn-close-white' : '';
+    $messageHtml = '<div class="alert alert-' . htmlspecialchars($messageType) . ' alert-dismissible fade show' . $successClass . '" role="alert">'
+        . htmlspecialchars($message)
+        . '<button type="button" class="btn-close' . $closeClass . '" data-bs-dismiss="alert" aria-label="Close"></button></div>';
 }
 
 // Get filter parameters
@@ -67,6 +142,60 @@ try {
     $appointments = $stmt->fetchAll();
 } catch (PDOException $e) {
     $appointments = [];
+}
+
+/**
+ * Build action buttons for a lawyer-managed appointment row.
+ */
+function buildLawyerAppointmentActions(array $appointment): string
+{
+    $id = (int) $appointment['id'];
+    $status = (string) ($appointment['status'] ?? 'pending');
+    $caseId = (int) $appointment['case_id'];
+    $dateVal = date('Y-m-d', strtotime($appointment['starts_at']));
+    $timeVal = date('H:i', strtotime($appointment['starts_at']));
+    $defaultRescheduleStatus = ($status === 'accepted') ? 'accepted' : 'pending';
+
+    $html = '<div class="d-flex flex-wrap gap-1 justify-content-end align-items-center">';
+
+    $html .= '<a href="lawyer-case-view.php?id=' . $caseId . '" class="btn btn-sm btn-outline-dark mb-0">Case</a>';
+
+    if ($status !== 'accepted') {
+        $html .= '
+        <form method="post" class="d-inline">
+            <input type="hidden" name="appointment_id" value="' . $id . '">
+            <input type="hidden" name="appointment_action" value="accept">
+            <button type="submit" class="btn btn-sm btn-success mb-0" onclick="return confirm(\'Accept this appointment?\')">Accept</button>
+        </form>';
+    }
+
+    if ($status !== 'rejected') {
+        $html .= '
+        <form method="post" class="d-inline">
+            <input type="hidden" name="appointment_id" value="' . $id . '">
+            <input type="hidden" name="appointment_action" value="reject">
+            <button type="submit" class="btn btn-sm btn-danger mb-0" onclick="return confirm(\'Reject this appointment?\')">Reject</button>
+        </form>';
+    }
+
+    if ($status !== 'pending') {
+        $html .= '
+        <form method="post" class="d-inline">
+            <input type="hidden" name="appointment_id" value="' . $id . '">
+            <input type="hidden" name="appointment_action" value="pending">
+            <button type="submit" class="btn btn-sm btn-warning mb-0" onclick="return confirm(\'Keep this appointment as pending?\')">Keep pending</button>
+        </form>';
+    }
+
+    $html .= '
+        <button type="button" class="btn btn-sm btn-primary mb-0"
+            onclick="openRescheduleModal(' . $id . ', \'' . htmlspecialchars($dateVal, ENT_QUOTES) . '\', \'' . htmlspecialchars($timeVal, ENT_QUOTES) . '\', \'' . htmlspecialchars($defaultRescheduleStatus, ENT_QUOTES) . '\')">
+            Reschedule
+        </button>';
+
+    $html .= '</div>';
+
+    return $html;
 }
 
 // Build appointments table HTML
@@ -126,22 +255,7 @@ if (empty($appointments)) {
             </td>
             <td>' . htmlspecialchars($appointment['notes'] ?: 'No notes') . '</td>
             <td class="text-center">' . $statusBadge . '</td>
-            <td class="text-end">
-                <a href="lawyer-case-view.php?id=' . (int)$appointment['case_id'] . '" class="btn btn-sm btn-primary me-1">View Case</a>';
-                if ($appointment['status'] === 'pending') {
-                    $appointmentsTable .= '
-                <form method="post" class="d-inline">
-                    <input type="hidden" name="appointment_id" value="' . (int)$appointment['id'] . '">
-                    <input type="hidden" name="appointment_action" value="accept">
-                    <button type="submit" class="btn btn-sm btn-success me-1" onclick="return confirm(\'Accept this appointment?\')">Accept</button>
-                </form>
-                <form method="post" class="d-inline">
-                    <input type="hidden" name="appointment_id" value="' . (int)$appointment['id'] . '">
-                    <input type="hidden" name="appointment_action" value="reject">
-                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm(\'Reject this appointment?\')">Reject</button>
-                </form>';
-                }
-            $appointmentsTable .= '</td>
+            <td class="text-end">' . buildLawyerAppointmentActions($appointment) . '</td>
         </tr>';
     }
 }
@@ -243,7 +357,8 @@ $html = <<<'HTML'
     <link href="https://demos.creative-tim.com/argon-dashboard-pro/assets/css/nucleo-svg.css" rel="stylesheet" />
     <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
     <link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
-<link href="../assets/css/app-font-montserrat.css?v=2" rel="stylesheet" />
+    <link href="../assets/css/app-font-montserrat.css?v=2" rel="stylesheet" />
+    <link href="../assets/css/legalpro-lawyer-portal.css?v=1" rel="stylesheet" />
 </head>
 <body class="g-sidenav-show bg-gray-100 legalpro-lawyer-portal lawyer-appointments-page">
     <div class="min-height-300 bg-legalpro-lawyer position-absolute w-100"></div>
@@ -264,6 +379,8 @@ $html = <<<'HTML'
         </nav>
 
         <div class="container-fluid py-4">
+            {MESSAGE}
+
             <!-- Filters -->
             <div class="row mb-4">
                 <div class="col-12">
@@ -304,7 +421,7 @@ $html = <<<'HTML'
                                 </div>
                                 <div>
                                     <h6 class="mb-0">My Appointments</h6>
-                                    <p class="text-xs text-muted mb-0">Appointments from your assigned cases</p>
+                                    <p class="text-xs text-muted mb-0">Accept, reject, keep pending, or reschedule client requests</p>
                                 </div>
                             </div>
                         </div>
@@ -316,10 +433,9 @@ $html = <<<'HTML'
                                             <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Case</th>
                                             <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Client</th>
                                             <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Date & Time</th>
-                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Description</th>
-                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Location</th>
+                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Notes</th>
                                             <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
-                                            <th class="text-secondary opacity-7"></th>
+                                            <th class="text-end text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -346,16 +462,69 @@ $html = <<<'HTML'
         </footer>
     </main>
 
+    <!-- Reschedule modal -->
+    <div class="modal fade" id="rescheduleModal" tabindex="-1" aria-labelledby="rescheduleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="post" id="rescheduleForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="rescheduleModalLabel">Reschedule appointment</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="appointment_action" value="reschedule">
+                        <input type="hidden" name="appointment_id" id="reschedule_appointment_id" value="">
+                        <div class="mb-3">
+                            <label class="form-label">New date</label>
+                            <input type="date" class="form-control" name="reschedule_date" id="reschedule_date" min="{MIN_DATE}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">New time</label>
+                            <input type="time" class="form-control" name="reschedule_time" id="reschedule_time" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Status after reschedule</label>
+                            <select class="form-select" name="reschedule_status" id="reschedule_status">
+                                <option value="pending">Pending (client to review)</option>
+                                <option value="accepted">Accepted (confirmed)</option>
+                            </select>
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label">Message to client <span class="text-muted">(optional)</span></label>
+                            <textarea class="form-control" name="reschedule_notes" id="reschedule_notes" rows="3" placeholder="Reason for reschedule or instructions for the client…"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary mb-0" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary mb-0">Save new date &amp; time</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="../assets/js/core/popper.min.js"></script>
     <script src="../assets/js/core/bootstrap.min.js"></script>
     <script src="../assets/js/plugins/perfect-scrollbar.min.js"></script>
     <script src="../assets/js/plugins/smooth-scrollbar.min.js"></script>
     <script src="../assets/js/argon-dashboard.min.js?v=2.1.0"></script>
+    <script>
+        function openRescheduleModal(appointmentId, dateValue, timeValue, statusValue) {
+            document.getElementById('reschedule_appointment_id').value = appointmentId;
+            document.getElementById('reschedule_date').value = dateValue;
+            document.getElementById('reschedule_time').value = timeValue;
+            document.getElementById('reschedule_status').value = statusValue || 'pending';
+            document.getElementById('reschedule_notes').value = '';
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('rescheduleModal')).show();
+        }
+    </script>
 </body>
 </html>
 HTML;
 
 $replacements = [
+    '{MESSAGE}' => $messageHtml,
+    '{MIN_DATE}' => date('Y-m-d'),
     '{NAVIGATION}' => $navHtml,
     '{STATUS_ALL}' => $statusFilter === 'all' ? ' selected' : '',
     '{STATUS_PENDING}' => $statusFilter === 'pending' ? ' selected' : '',
