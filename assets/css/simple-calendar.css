@@ -8,17 +8,20 @@
 
 .calendar-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    color: #fff;
     padding: 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.calendar-header h5 {
+.calendar-header h5,
+.calendar-header .h5,
+.calendar-header .mb-0 {
     margin: 0;
     flex: 1;
     text-align: center;
+    color: #fff !important;
 }
 
 .calendar-grid {

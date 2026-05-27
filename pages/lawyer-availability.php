@@ -8,6 +8,7 @@ if (!isset($_SESSION['lawyer_id'])) {
     exit;
 }
 
+
 $lawyerId = $_SESSION['lawyer_id'];
 $message = '';
 $messageType = '';
