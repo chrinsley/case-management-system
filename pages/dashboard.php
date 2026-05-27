@@ -276,8 +276,8 @@ $html = <<<'HTML'
     <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
     <link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
     <link href="../assets/css/app-font-montserrat.css?v=1" rel="stylesheet" />
-    <link href="../assets/css/dashboard-enhancements.css?v=1" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
+    <link href="../assets/css/dashboard-enhancements.css?v=2" rel="stylesheet" />
 </head>
 <body class="g-sidenav-show bg-gray-100 legalpro-admin-portal">
     <div class="min-height-300 bg-legalpro-admin position-absolute w-100"></div>
@@ -300,7 +300,7 @@ $html = <<<'HTML'
                     <a href="clients.php" class="btn btn-sm btn-outline-white mb-0">Clients</a>
                 </div>
             </div>
-        </nav>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Minus accusamus nobis maxime magnam id, eum esse quis modi commodi natus officiis dolorum? Officiis, quod tenetur! Magnam sunt quasi odit consectetur.
+        </nav>
 
         <div class="container-fluid py-4">
             <div class="row mb-4">
