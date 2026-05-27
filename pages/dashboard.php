@@ -96,11 +96,11 @@ try {
     $dueToday = 0;
 }
 
-// Fetch recent cases
+// Fetch recent cases for the replacement widget
 $recentCases = [];
 try {
     $stmt = $pdo->query("
-        SELECT
+        SELECT 
             c.*,
             cl.first_name AS client_first_name,
             cl.last_name AS client_last_name
@@ -114,7 +114,7 @@ try {
     $recentCases = [];
 }
 
-// Appointments for dashboard calendar
+// Appointments for dashboard calendar (same joins as appointments.php)
 $calendarEvents = [];
 try {
     $calStmt = $pdo->query("
@@ -754,7 +754,7 @@ if (empty($recentCases)) {
         $clientFirstName = isset($case['client_first_name']) ? $case['client_first_name'] : '';
         $clientLastName = isset($case['client_last_name']) ? $case['client_last_name'] : '';
         $clientName = trim($clientFirstName . ' ' . $clientLastName) ?: 'Unassigned';
-
+        
         $status = isset($case['status']) ? strtolower($case['status']) : 'open';
         $statusLabel = ucfirst(str_replace('_', ' ', $status));
         $badgeClass = 'bg-gradient-info';
@@ -763,9 +763,9 @@ if (empty($recentCases)) {
         } elseif ($status === 'closed') {
             $badgeClass = 'bg-gradient-success';
         }
-
+        
         $createdDate = isset($case['created_at']) && $case['created_at'] ? date('M d, Y', strtotime($case['created_at'])) : 'N/A';
-
+        
         $recentCasesList .= '
         <a href="case-view.php?id=' . $caseId . '" style="text-decoration: none; color: inherit;">
             <div class="dashboard-recent-item d-flex justify-content-between align-items-center mb-2">
@@ -820,7 +820,10 @@ $html = str_replace('{NEW_CASES_WEEK}', $newCasesThisWeek, $html);
 $html = str_replace('{COMPLETION_RATE}', $completionRate, $html);
 $html = str_replace('{DUE_TODAY}', $dueToday, $html);
 $html = str_replace('{RECENT_CASES_LIST}', $recentCasesList, $html);
+
+// Inject dynamic calendar data directly into the template
 $html = str_replace('{CALENDAR_EVENTS_JSON}', json_encode($calendarEvents), $html);
+
 // rewrite internal links from .html to .php
 $html = preg_replace('/href="([^"\']+)\.html"/i', 'href="$1.php"', $html);
 
@@ -838,7 +841,7 @@ include __DIR__ . '/../inc/footer.php';
 $footer = ob_get_clean();
 
 // insert footer before closing </body>
-$html = preg_replace('/<\/body>\s*<\/html>$/i', $footer . "\n</body>\n</html>", $html);
+$html = preg_replace('/<\/body>\s*<\/html>$/i', $footer, $html);
 
 echo $html;
 ?>
