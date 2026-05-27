@@ -75,6 +75,20 @@
     font-weight: 600;
 }
 
+.dashboard-glance__item:first-child {
+    background: linear-gradient(310deg, #5e72e4 0%, #825ee4 100%);
+    border-color: transparent;
+}
+
+.dashboard-glance__item:first-child .dashboard-glance__value,
+.dashboard-glance__item:first-child .dashboard-glance__label {
+    color: #ffffff;
+}
+
+.dashboard-glance__item:first-child .dashboard-glance__icon--primary {
+    background: rgba(255, 255, 255, 0.2);
+}
+
 .dashboard-quick-actions {
     display: flex;
     flex-wrap: wrap;
@@ -303,13 +317,21 @@
     background-color: #5e72e4 !important;
     background-image: linear-gradient(310deg, #5e72e4 0%, #825ee4 100%) !important;
     border-color: #5e72e4 !important;
-    color: #fff !important;
+    color: #ffffff !important;
     text-transform: capitalize;
     font-size: 0.85rem;
     font-weight: 600;
     border-radius: 0.5rem !important;
     padding: 0.5rem 1rem;
     box-shadow: none !important;
+    opacity: 1 !important;
+}
+
+#dashboardCalendar .fc .fc-toolbar.fc-header-toolbar .fc-today-button,
+#dashboardCalendar .fc .fc-toolbar.fc-header-toolbar .fc-today-button:not(:disabled),
+#dashboardCalendar .fc .fc-toolbar.fc-header-toolbar .fc-today-button:disabled {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
     opacity: 1 !important;
 }
 
@@ -324,8 +346,9 @@
 }
 
 #dashboardCalendar .fc .fc-toolbar.fc-header-toolbar .fc-button:disabled {
-    color: rgba(255, 255, 255, 0.65) !important;
-    opacity: 0.55 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    opacity: 1 !important;
 }
 
 #dashboardCalendar .fc .fc-toolbar.fc-header-toolbar .fc-button-primary:not(:disabled).fc-button-active,
@@ -369,7 +392,8 @@
 
 #dashboardCalendar .fc .fc-day-today .fc-daygrid-day-number {
     background: linear-gradient(310deg, #5e72e4 0%, #825ee4 100%);
-    color: #fff;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
     border-radius: 50%;
     width: 1.65rem;
     height: 1.65rem;
@@ -377,6 +401,7 @@
     align-items: center;
     justify-content: center;
     margin: 0.25rem;
+    font-weight: 700;
 }
 
 #dashboardCalendar .fc-event {

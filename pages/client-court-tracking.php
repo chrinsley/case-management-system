@@ -210,7 +210,8 @@ if (!empty($_SESSION['error_message'])) {
             box-shadow: none;
         }
         .client-court-tracking-page .fc .fc-button:disabled {
-            opacity: 0.5 !important;
+            color: #ffffff !important;
+            opacity: 1 !important;
         }
         .client-court-tracking-page .fc .fc-button-primary:not(:disabled).fc-button-active,
         .client-court-tracking-page .fc .fc-button-primary:not(:disabled):active {

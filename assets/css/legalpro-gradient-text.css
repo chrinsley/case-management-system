@@ -119,8 +119,16 @@
     background-color: #5e72e4 !important;
     background-image: linear-gradient(310deg, #5e72e4 0%, #825ee4 100%) !important;
     border-color: #5e72e4 !important;
-    color: #fff !important;
+    color: #ffffff !important;
     box-shadow: none !important;
+    opacity: 1 !important;
+}
+
+.fc .fc-toolbar.fc-header-toolbar .fc-today-button,
+.fc .fc-toolbar.fc-header-toolbar .fc-today-button:not(:disabled),
+.fc .fc-toolbar.fc-header-toolbar .fc-today-button:disabled {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
     opacity: 1 !important;
 }
 
@@ -130,7 +138,7 @@
     background-color: #324cdd !important;
     background-image: none !important;
     border-color: #324cdd !important;
-    color: #fff !important;
+    color: #ffffff !important;
     box-shadow: none !important;
 }
 
@@ -139,14 +147,29 @@
 .fc .fc-toolbar.fc-header-toolbar .fc-button.fc-button-active {
     background-color: #324cdd !important;
     background-image: none !important;
-    border-color: #fff !important;
-    color: #fff !important;
+    border-color: #ffffff !important;
+    color: #ffffff !important;
 }
 
 .fc .fc-toolbar.fc-header-toolbar .fc-button-primary:disabled,
 .fc .fc-toolbar.fc-header-toolbar .fc-button:disabled {
-    color: rgba(255, 255, 255, 0.65) !important;
-    opacity: 0.55 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    opacity: 1 !important;
+}
+
+.fc .fc-day-today .fc-daygrid-day-number {
+    background: linear-gradient(310deg, #5e72e4 0%, #825ee4 100%);
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    border-radius: 50%;
+    width: 1.65rem;
+    height: 1.65rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0.25rem;
+    font-weight: 700;
 }
 
 .fc .fc-toolbar.fc-header-toolbar .fc-icon,
