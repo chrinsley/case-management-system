@@ -385,8 +385,8 @@ $html = <<<'HTML'
         <div class="container-fluid py-4">
             {MESSAGE}
             <div class="row">
-                <div class="col-lg-5">
-                    <div class="card h-100">
+                <div class="col-12">
+                    <div class="card">
                         <div class="card-header pb-0">
                             <h6 class="mb-0">{FORM_TITLE}</h6>
                             <p class="text-sm text-muted mb-0">Generate clean invoices with linked cases and clients.</p>
@@ -442,8 +442,8 @@ $html = <<<'HTML'
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-7 mt-4 mt-lg-0">
-                    <div class="card h-100">
+                <div class="col-12 mt-4">
+                    <div class="card">
                         <div class="card-header pb-0">
                             <h6 class="mb-0">Invoice List</h6>
                         </div>
