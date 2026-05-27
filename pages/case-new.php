@@ -583,16 +583,10 @@ $html = <<<'HTML'
 											<tbody id="services-tbody">
 												<!-- Services rows will be added here dynamically -->
 											</tbody>
-											<tfoot>
-												<tr>
-													<td colspan="3">
-														<button type="button" class="btn btn-sm btn-outline-primary" id="add-service-row">
-															<i class="fas fa-plus"></i> Add Service
-														</button>
-													</td>
-												</tr>
-											</tfoot>
 										</table>
+									</div>
+									<div class="mt-2">
+										<button type="button" class="btn btn-primary btn-sm mb-0" id="add-service-row">Add Service</button>
 									</div>
 								</div>
 								<div class="form-group">
