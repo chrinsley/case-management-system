@@ -199,7 +199,51 @@ $html = <<<'HTML'
             padding: 0.75rem;
             text-transform: uppercase;
         }
+        .availability-fallback-day-name {
+            display: block;
+        }
+        .availability-fallback-day-date {
+            color: #67748e;
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-top: 0.2rem;
+            text-transform: none;
+        }
+        .availability-fallback-toolbar {
+            align-items: center;
+            background: #f6f8fc;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: center;
+            padding: 0.75rem 1rem;
+        }
+        .availability-week-nav {
+            align-items: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+        .availability-week-nav .btn-primary {
+            color: #fff !important;
+        }
+        .availability-week-nav .btn-primary:hover,
+        .availability-week-nav .btn-primary:focus {
+            color: #fff !important;
+        }
+        .availability-fallback-week-label {
+            color: #344767;
+            font-size: 0.875rem;
+            font-weight: 700;
+            min-width: 10rem;
+            text-align: center;
+        }
         .availability-fallback-day {
+            cursor: pointer;
             min-height: 150px;
             border-right: 1px solid #e9ecef;
             padding: 0.75rem;
@@ -208,13 +252,37 @@ $html = <<<'HTML'
             background: #fafbfe;
         }
         .availability-fallback-event {
+            align-items: flex-start;
             border-radius: 0.45rem;
             color: #fff;
             cursor: pointer;
+            display: flex;
             font-size: 0.75rem;
             font-weight: 700;
+            gap: 0.35rem;
+            justify-content: space-between;
             margin-bottom: 0.4rem;
             padding: 0.35rem 0.45rem;
+        }
+        .availability-fallback-event-label {
+            flex: 1;
+            line-height: 1.3;
+            min-width: 0;
+        }
+        .availability-fallback-event-delete {
+            background: rgba(255, 255, 255, 0.25);
+            border: 0;
+            border-radius: 0.25rem;
+            color: #fff;
+            cursor: pointer;
+            flex-shrink: 0;
+            font-size: 0.85rem;
+            font-weight: 700;
+            line-height: 1;
+            padding: 0.1rem 0.35rem;
+        }
+        .availability-fallback-event-delete:hover {
+            background: rgba(255, 255, 255, 0.45);
         }
     </style>
 </head>
@@ -338,8 +406,13 @@ $html = <<<'HTML'
                                         <h6 class="mb-1">Availability Calendar</h6>
                                         <p class="text-sm text-muted mb-0">Click a day to add hours, or click an existing slot to edit it.</p>
                                     </div>
-                                    <button type="button" class="btn btn-primary mb-0" onclick="openAvailabilityModal()">Add Time Slot</button>
+                                    <button type="button" class="btn btn-primary mb-0" id="addSlotBtn">Add Time Slot</button>
                                 </div>
+                            </div>
+                            <div class="availability-week-nav">
+                                <button type="button" class="btn btn-primary btn-sm mb-0 text-white" id="prevWeekBtn">Previous Week</button>
+                                <span class="availability-fallback-week-label mb-0" id="weekRangeLabel"></span>
+                                <button type="button" class="btn btn-primary btn-sm mb-0 text-white" id="nextWeekBtn">Next Week</button>
                             </div>
                             <div id="availabilityCalendar"></div>
                         </div>
@@ -392,6 +465,11 @@ $html = <<<'HTML'
         </div>
     </div>
 
+    <form method="POST" action="" id="deleteSlotForm" class="d-none">
+        <input type="hidden" name="delete_slot" value="1">
+        <input type="hidden" name="slot_id" id="delete_slot_id" value="">
+    </form>
+
     <script src="../assets/js/core/popper.min.js"></script>
     <script src="../assets/js/core/bootstrap.min.js"></script>
     <script src="../assets/js/plugins/perfect-scrollbar.min.js"></script>
@@ -400,7 +478,18 @@ $html = <<<'HTML'
     <script src="../assets/js/argon-dashboard.min.js?v=2.1.0"></script>
     <script>
         var availabilityEvents = {AVAILABILITY_EVENTS_JSON};
-        var calendarLoaded = false;
+        var fallbackWeekStartIso = null;
+
+        function parseIsoDate(iso) {
+            var parts = iso.split('-').map(Number);
+            return new Date(parts[0], parts[1] - 1, parts[2]);
+        }
+
+        function getWeekStart(date) {
+            var d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            d.setDate(d.getDate() - d.getDay());
+            return d;
+        }
 
         function dayNameFromDate(date) {
             return ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][date.getDay()];
@@ -411,6 +500,32 @@ $html = <<<'HTML'
             var month = String(date.getMonth() + 1).padStart(2, '0');
             var day = String(date.getDate()).padStart(2, '0');
             return year + '-' + month + '-' + day;
+        }
+
+        function addDaysToIso(iso, days) {
+            var date = parseIsoDate(iso);
+            date.setDate(date.getDate() + days);
+            return dateToInputValue(date);
+        }
+
+        function formatWeekRangeLabel(weekStartIso) {
+            var weekStart = parseIsoDate(weekStartIso);
+            var weekEnd = parseIsoDate(addDaysToIso(weekStartIso, 6));
+            var startStr = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            var endStr = weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            return startStr + ' – ' + endStr;
+        }
+
+        function getCurrentWeekStartIso() {
+            if (!fallbackWeekStartIso) {
+                fallbackWeekStartIso = dateToInputValue(getWeekStart(new Date()));
+            }
+            return fallbackWeekStartIso;
+        }
+
+        function shiftFallbackWeek(deltaWeeks) {
+            fallbackWeekStartIso = addDaysToIso(getCurrentWeekStartIso(), deltaWeeks * 7);
+            renderAvailabilityCalendar();
         }
 
         function openAvailabilityModal(day, slotId, slotDate, startTime, endTime, slotType) {
@@ -425,58 +540,65 @@ $html = <<<'HTML'
             new bootstrap.Modal(document.getElementById('availabilityModal')).show();
         }
 
-        function initAvailabilityCalendar() {
-            var calendarEl = document.getElementById('availabilityCalendar');
-            if (!calendarEl) return;
-            try {
-                var calendar = new FullCalendar.Calendar(calendarEl, {
-                    initialView: 'dayGridMonth',
-                    headerToolbar: {
-                        left: 'prev,next today',
-                        center: 'title',
-                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                    },
-                    events: availabilityEvents,
-                    height: 'auto',
-                    eventDisplay: 'block',
-                    dateClick: function(info) {
-                        openAvailabilityModal(dayNameFromDate(info.date), '', dateToInputValue(info.date));
-                    },
-                    eventClick: function(info) {
-                        info.jsEvent.preventDefault();
-                        var props = info.event.extendedProps || {};
-                        openAvailabilityModal(props.day, props.slotId || info.event.id, props.slotDate || '', props.startTime, props.endTime, props.slotType);
-                    },
-                    eventDidMount: function(info) {
-                        info.el.setAttribute('title', 'Click to edit this time slot');
-                    }
-                });
-                calendar.render();
-            } catch (error) {
-                renderAvailabilityFallbackCalendar();
-            }
+        function openAvailabilityModalFromDate(dateStr) {
+            openAvailabilityModal(dayNameFromDate(parseIsoDate(dateStr)), '', dateStr);
         }
 
-        function renderAvailabilityFallbackCalendar() {
+        function deleteAvailabilitySlot(slotId) {
+            if (!slotId || !confirm('Delete this time slot?')) {
+                return;
+            }
+            document.getElementById('delete_slot_id').value = slotId;
+            document.getElementById('deleteSlotForm').submit();
+        }
+
+        function renderAvailabilityCalendar() {
             var calendarEl = document.getElementById('availabilityCalendar');
+            var weekLabelEl = document.getElementById('weekRangeLabel');
             if (!calendarEl) return;
+
+            var weekStartIso = getCurrentWeekStartIso();
+            if (weekLabelEl) {
+                weekLabelEl.textContent = formatWeekRangeLabel(weekStartIso);
+            }
+
             var dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            var html = '<div class="availability-fallback-calendar"><div class="availability-fallback-header">';
-            dayNames.forEach(function(dayName) {
-                html += '<div>' + dayName + '</div>';
+            var html = '<div class="availability-fallback-calendar">';
+            html += '<div class="availability-fallback-header">';
+
+            dayNames.forEach(function(dayName, dayIndex) {
+                var dayDateIso = addDaysToIso(weekStartIso, dayIndex);
+                var dayDate = parseIsoDate(dayDateIso);
+                var dateLabel = dayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                html += '<div><span class="availability-fallback-day-name">' + dayName + '</span>';
+                html += '<span class="availability-fallback-day-date">' + dateLabel + '</span></div>';
             });
+
             html += '</div><div class="availability-fallback-grid">';
             dayNames.forEach(function(dayName, dayIndex) {
-                html += '<div class="availability-fallback-day">';
+                var dayDateIso = addDaysToIso(weekStartIso, dayIndex);
+                html += '<div class="availability-fallback-day" data-date="' + dayDateIso + '">';
                 var eventsForDay = availabilityEvents.filter(function(event) {
-                    return event.start && new Date(event.start).getDay() === dayIndex;
+                    var props = event.extendedProps || {};
+                    var eventDate = props.slotDate || (event.start ? event.start.split('T')[0] : '');
+                    return eventDate === dayDateIso;
                 });
                 if (eventsForDay.length === 0) {
                     html += '<p class="text-sm text-muted mb-0">No hours set</p>';
                 } else {
                     eventsForDay.forEach(function(event) {
                         var props = event.extendedProps || {};
-                        html += '<div class="availability-fallback-event" style="background-color:' + event.backgroundColor + '" onclick="openAvailabilityModal(\'' + props.day + '\', \'' + (props.slotId || event.id) + '\', \'' + (props.slotDate || '') + '\', \'' + props.startTime + '\', \'' + props.endTime + '\', \'' + props.slotType + '\')">' + event.title + '</div>';
+                        var slotId = props.slotId || event.id || '';
+                        html += '<div class="availability-fallback-event" style="background-color:' + event.backgroundColor + '"';
+                        html += ' data-day="' + (props.day || '') + '"';
+                        html += ' data-slot-id="' + slotId + '"';
+                        html += ' data-slot-date="' + (props.slotDate || '') + '"';
+                        html += ' data-start-time="' + (props.startTime || '') + '"';
+                        html += ' data-end-time="' + (props.endTime || '') + '"';
+                        html += ' data-slot-type="' + (props.slotType || 'available') + '"';
+                        html += '><span class="availability-fallback-event-label">' + event.title + '</span>';
+                        html += '<button type="button" class="availability-fallback-event-delete" data-slot-id="' + slotId + '" title="Delete slot" aria-label="Delete slot">&times;</button>';
+                        html += '</div>';
                     });
                 }
                 html += '</div>';
@@ -490,28 +612,50 @@ $html = <<<'HTML'
             if (slotDateInput) {
                 slotDateInput.addEventListener('change', function() {
                     if (this.value) {
-                        var parts = this.value.split('-').map(Number);
-                        document.getElementById('day_of_week').value = dayNameFromDate(new Date(parts[0], parts[1] - 1, parts[2]));
+                        document.getElementById('day_of_week').value = dayNameFromDate(parseIsoDate(this.value));
                     }
                 });
             }
 
-            if (typeof FullCalendar !== 'undefined') {
-                calendarLoaded = true;
-                initAvailabilityCalendar();
-            } else {
-                var script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.10.1/main.min.js';
-                script.onload = function() {
-                    calendarLoaded = true;
-                    initAvailabilityCalendar();
-                };
-                script.onerror = renderAvailabilityFallbackCalendar;
-                document.head.appendChild(script);
-                setTimeout(function() {
-                    if (!calendarLoaded) renderAvailabilityFallbackCalendar();
-                }, 3500);
-            }
+            document.getElementById('prevWeekBtn').addEventListener('click', function() {
+                shiftFallbackWeek(-1);
+            });
+            document.getElementById('nextWeekBtn').addEventListener('click', function() {
+                shiftFallbackWeek(1);
+            });
+            document.getElementById('addSlotBtn').addEventListener('click', function() {
+                openAvailabilityModal();
+            });
+
+            document.getElementById('availabilityCalendar').addEventListener('click', function(event) {
+                var deleteBtn = event.target.closest('.availability-fallback-event-delete');
+                if (deleteBtn) {
+                    event.stopPropagation();
+                    deleteAvailabilitySlot(deleteBtn.getAttribute('data-slot-id'));
+                    return;
+                }
+
+                var eventEl = event.target.closest('.availability-fallback-event');
+                if (eventEl) {
+                    event.stopPropagation();
+                    openAvailabilityModal(
+                        eventEl.getAttribute('data-day'),
+                        eventEl.getAttribute('data-slot-id'),
+                        eventEl.getAttribute('data-slot-date'),
+                        eventEl.getAttribute('data-start-time'),
+                        eventEl.getAttribute('data-end-time'),
+                        eventEl.getAttribute('data-slot-type')
+                    );
+                    return;
+                }
+
+                var dayEl = event.target.closest('.availability-fallback-day');
+                if (dayEl && dayEl.getAttribute('data-date')) {
+                    openAvailabilityModalFromDate(dayEl.getAttribute('data-date'));
+                }
+            });
+
+            renderAvailabilityCalendar();
         });
     </script>
 </body>
