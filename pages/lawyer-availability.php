@@ -129,6 +129,10 @@ foreach ($timeSlots as $slot) {
     ];
 }
 
+ob_start();
+include __DIR__ . '/../inc/lawyer-menunav.php';
+$navHtml = ob_get_clean();
+
 $html = <<<'HTML'
 <!DOCTYPE html>
 <html lang="en">
@@ -288,7 +292,9 @@ $html = <<<'HTML'
 </head>
 <body class="g-sidenav-show bg-gray-100 legalpro-lawyer-portal lawyer-availability-page">
     <div class="min-height-300 bg-legalpro-lawyer position-absolute w-100"></div>
-    <?php include __DIR__ . '/../inc/lawyer-menunav.php'; ?>
+
+    {NAVIGATION}
+
     <main class="main-content position-relative border-radius-lg">
         <!-- Navbar -->
         <nav class="navbar navbar-main navbar-expand-lg px-0 mx-4 shadow-none border-radius-xl" id="navbarBlur" navbar-scroll="true">
@@ -589,6 +595,7 @@ HTML;
 $lawyerName = isset($_SESSION['lawyer_name']) ? $_SESSION['lawyer_name'] : 'Lawyer';
 
 $html = str_replace('{$message}', $messageHtml, $html);
+$html = str_replace('{NAVIGATION}', $navHtml, $html);
 $html = str_replace('{$lawyerName}', htmlspecialchars($lawyerName), $html);
 $html = str_replace('{AVAILABILITY_EVENTS_JSON}', json_encode($availabilityEvents), $html);
 

@@ -405,6 +405,10 @@ foreach ($lawyerCases as $lawyerCase) {
     $caseOptions .= '<option value="' . (int)$lawyerCase['id'] . '"' . $selected . '>' . htmlspecialchars($lawyerCase['title']) . '</option>';
 }
 
+ob_start();
+include __DIR__ . '/../inc/lawyer-menunav.php';
+$navHtml = ob_get_clean();
+
 $html = <<<'HTML'
 <!DOCTYPE html>
 <html lang="en">
@@ -471,7 +475,9 @@ $html = <<<'HTML'
 </head>
 <body class="g-sidenav-show bg-gray-100 legalpro-lawyer-portal lawyer-tasks-page">
     <div class="min-height-300 bg-legalpro-lawyer position-absolute w-100"></div>
-    <?php include __DIR__ . '/../inc/lawyer-menunav.php'; ?>
+
+    {NAVIGATION}
+
     <main class="main-content position-relative border-radius-lg">
         <nav class="navbar navbar-main navbar-expand-lg px-0 mx-4 shadow-none border-radius-xl" id="navbarBlur" data-scroll="false">
             <div class="container-fluid py-1 px-3">
@@ -628,6 +634,7 @@ HTML;
 
 // Replace placeholders
 $replacements = [
+    '{NAVIGATION}' => $navHtml,
     '{MESSAGE}' => $messageHtml,
     '{TASKS_HTML}' => $tasksHtml,
     '{TASK_CASE_OPTIONS}' => $caseOptions,
