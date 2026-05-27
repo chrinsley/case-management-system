@@ -90,39 +90,89 @@
     gap: 0.5rem;
 }
 
+.fc .fc-toolbar.fc-header-toolbar .fc-button-group {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 0.5rem;
+    vertical-align: middle;
+}
+
+.fc .fc-toolbar.fc-header-toolbar .fc-toolbar-chunk {
+    display: flex !important;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.fc .fc-toolbar.fc-header-toolbar .fc-button-group > .fc-button {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    border-radius: 0.5rem !important;
+}
+
 .fc .fc-toolbar-title {
     color: #fff !important;
 }
 
-.fc .fc-prev-button,
-.fc .fc-next-button {
-    background: #fff !important;
+/* Prev/next on gradient toolbar — white icons */
+.fc .fc-toolbar.fc-header-toolbar .fc-prev-button,
+.fc .fc-toolbar.fc-header-toolbar .fc-next-button {
+    background: rgba(255, 255, 255, 0.2) !important;
     background-image: none !important;
-    border-color: #fff !important;
-    color: #344767 !important;
-}
-
-.fc .fc-prev-button:hover,
-.fc .fc-next-button:hover,
-.fc .fc-prev-button:focus,
-.fc .fc-next-button:focus {
-    background: #f8f9fa !important;
-    border-color: #f8f9fa !important;
-    color: #1f2b4d !important;
+    border: 1px solid rgba(255, 255, 255, 0.65) !important;
+    color: #fff !important;
     box-shadow: none !important;
 }
 
-.fc .fc-prev-button .fc-icon,
-.fc .fc-next-button .fc-icon {
-    color: #344767 !important;
+.fc .fc-toolbar.fc-header-toolbar .fc-prev-button:hover,
+.fc .fc-toolbar.fc-header-toolbar .fc-next-button:hover,
+.fc .fc-toolbar.fc-header-toolbar .fc-prev-button:focus,
+.fc .fc-toolbar.fc-header-toolbar .fc-next-button:focus {
+    background: rgba(255, 255, 255, 0.32) !important;
+    border-color: #fff !important;
+    color: #fff !important;
+    box-shadow: none !important;
 }
 
-.fc .fc-button-primary {
+.fc .fc-toolbar.fc-header-toolbar .fc-prev-button .fc-icon,
+.fc .fc-toolbar.fc-header-toolbar .fc-next-button .fc-icon {
     color: #fff !important;
 }
 
-.fc .fc-button-primary:disabled {
-    color: rgba(255, 255, 255, 0.65) !important;
+/* Today, Month, Week, List — soft white on gradient toolbar */
+.fc .fc-toolbar.fc-header-toolbar .fc-button-primary {
+    background: rgba(255, 255, 255, 0.12) !important;
+    background-image: none !important;
+    border: 1px solid rgba(255, 255, 255, 0.45) !important;
+    color: rgba(255, 255, 255, 0.92) !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+}
+
+.fc .fc-toolbar.fc-header-toolbar .fc-button-primary:hover,
+.fc .fc-toolbar.fc-header-toolbar .fc-button-primary:focus {
+    background: rgba(255, 255, 255, 0.22) !important;
+    border-color: rgba(255, 255, 255, 0.7) !important;
+    color: #fff !important;
+    opacity: 1 !important;
+}
+
+.fc .fc-toolbar.fc-header-toolbar .fc-button-primary.fc-button-active,
+.fc .fc-toolbar.fc-header-toolbar .fc-button-active {
+    background: rgba(255, 255, 255, 0.3) !important;
+    background-image: none !important;
+    border-color: #fff !important;
+    color: #fff !important;
+}
+
+.fc .fc-toolbar.fc-header-toolbar .fc-button-primary:disabled {
+    color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.fc .fc-toolbar.fc-header-toolbar .fc-today-button,
+.fc .fc-toolbar.fc-header-toolbar .fc-today-button:disabled {
+    color: #fff !important;
+    opacity: 1 !important;
 }
 
 /* Simple calendar fallback month label */

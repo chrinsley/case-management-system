@@ -195,37 +195,90 @@ $html = <<<'HTML'
             font-family: 'Montserrat', sans-serif;
             color: #2c3e50;
         }
-        .fc .fc-toolbar-title {
+        #dashboardCalendar .fc .fc-toolbar.fc-header-toolbar {
+            background-image: linear-gradient(310deg, #5e72e4 0%, #825ee4 100%);
+            border-radius: 0.5rem;
+            padding: 0.65rem 1rem;
+            margin-bottom: 1rem !important;
+        }
+        #dashboardCalendar .fc .fc-toolbar-title {
             font-size: 1.2rem !important;
             font-weight: 700;
             color: #fff !important;
         }
-        .fc .fc-button-primary {
-            background-image: linear-gradient(310deg, #5e72e4 0%, #825ee4 100%) !important;
-            border: none !important;
+        #dashboardCalendar .fc .fc-prev-button,
+        #dashboardCalendar .fc .fc-next-button {
+            background: rgba(255, 255, 255, 0.2) !important;
+            background-image: none !important;
+            border: 1px solid rgba(255, 255, 255, 0.65) !important;
+            color: #fff !important;
+            box-shadow: none !important;
+        }
+        #dashboardCalendar .fc .fc-prev-button:hover,
+        #dashboardCalendar .fc .fc-next-button:hover,
+        #dashboardCalendar .fc .fc-prev-button:focus,
+        #dashboardCalendar .fc .fc-next-button:focus {
+            background: rgba(255, 255, 255, 0.32) !important;
+            border-color: #fff !important;
+            color: #fff !important;
+            box-shadow: none !important;
+        }
+        #dashboardCalendar .fc .fc-prev-button .fc-icon,
+        #dashboardCalendar .fc .fc-next-button .fc-icon {
+            color: #fff !important;
+        }
+        #dashboardCalendar .fc .fc-button-primary {
+            background: rgba(255, 255, 255, 0.12) !important;
+            background-image: none !important;
+            border: 1px solid rgba(255, 255, 255, 0.45) !important;
+            color: rgba(255, 255, 255, 0.92) !important;
             text-transform: capitalize;
             font-size: 0.85rem;
+            font-weight: 600;
             border-radius: 0.5rem !important;
             padding: 0.5rem 1rem;
+            box-shadow: none !important;
+            opacity: 1 !important;
         }
-        .fc .fc-button-group {
-            gap: 0.35rem;
-        }
-        .fc .fc-toolbar-chunk {
-            display: flex;
+        #dashboardCalendar .fc .fc-button-group {
+            display: inline-flex !important;
             align-items: center;
-            gap: 0.35rem;
+            gap: 0.5rem;
+            vertical-align: middle;
         }
-        .fc .fc-button-group > .fc-button {
+        #dashboardCalendar .fc .fc-toolbar-chunk {
+            display: flex !important;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        #dashboardCalendar .fc .fc-button-group > .fc-button {
             margin-left: 0 !important;
             margin-right: 0 !important;
+            border-radius: 0.5rem !important;
         }
-        .fc .fc-button-primary:hover {
-            box-shadow: 0 4px 7px -1px rgba(0, 0, 0, 0.11), 0 2px 4px -1px rgba(0, 0, 0, 0.07);
-            opacity: 0.85;
+        #dashboardCalendar .fc .fc-button-primary:hover,
+        #dashboardCalendar .fc .fc-button-primary:focus {
+            background: rgba(255, 255, 255, 0.22) !important;
+            border-color: rgba(255, 255, 255, 0.7) !important;
+            color: #fff !important;
+            box-shadow: none !important;
+            opacity: 1 !important;
         }
-        .fc .fc-button-active {
-            background-image: linear-gradient(310deg, #344767 0%, #5e72e4 100%) !important;
+        #dashboardCalendar .fc .fc-button-primary.fc-button-active,
+        #dashboardCalendar .fc .fc-button-active {
+            background: rgba(255, 255, 255, 0.3) !important;
+            background-image: none !important;
+            border-color: #fff !important;
+            color: #fff !important;
+        }
+        #dashboardCalendar .fc .fc-button-primary:disabled {
+            color: rgba(255, 255, 255, 0.55) !important;
+        }
+        #dashboardCalendar .fc .fc-today-button,
+        #dashboardCalendar .fc .fc-today-button:disabled {
+            color: #fff !important;
+            opacity: 1 !important;
         }
         .fc-event {
             cursor: pointer;
