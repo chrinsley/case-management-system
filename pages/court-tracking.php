@@ -198,6 +198,16 @@ foreach ($court_dates as $date) {
     <link rel="stylesheet" href="../assets/css/simple-calendar.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.10.1/main.min.css" />
     <style>
+        .fc .fc-toolbar.fc-header-toolbar {
+            background-image: linear-gradient(310deg, #5e72e4 0%, #825ee4 100%);
+            border-radius: 0.5rem;
+            padding: 0.65rem 1rem;
+            margin-bottom: 1rem;
+        }
+        .fc .fc-toolbar-title {
+            color: #fff !important;
+            font-weight: 700;
+        }
         .fc-event {
             cursor: pointer;
         }

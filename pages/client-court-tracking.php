@@ -181,10 +181,15 @@ if (!empty($_SESSION['error_message'])) {
             margin-bottom: 1rem;
             gap: 0.5rem;
         }
+        .client-court-tracking-page .fc .fc-toolbar.fc-header-toolbar {
+            background-image: linear-gradient(310deg, #5e72e4 0%, #825ee4 100%);
+            border-radius: 0.5rem;
+            padding: 0.65rem 1rem;
+        }
         .client-court-tracking-page .fc .fc-toolbar-title {
             font-size: 1.15rem;
             font-weight: 700;
-            color: #344767;
+            color: #fff !important;
         }
         .client-court-tracking-page .fc .fc-button {
             background-color: #5e72e4 !important;

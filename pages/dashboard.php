@@ -198,7 +198,7 @@ $html = <<<'HTML'
         .fc .fc-toolbar-title {
             font-size: 1.2rem !important;
             font-weight: 700;
-            color: #344767;
+            color: #fff !important;
         }
         .fc .fc-button-primary {
             background-image: linear-gradient(310deg, #5e72e4 0%, #825ee4 100%) !important;
