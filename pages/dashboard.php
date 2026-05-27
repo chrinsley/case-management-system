@@ -1,4 +1,3 @@
-
 <?php
 session_start();
 require_once __DIR__ . '/../inc/db.php';
@@ -140,12 +139,6 @@ try {
 
     foreach ($appointmentsList as $row) {
         $status = isset($row['status']) ? strtolower($row['status']) : 'pending';
-        $colors = ['bg' => '#fff3cd', 'border' => '#fb6340'];
-        if (in_array($status, ['accepted', 'approved'], true)) {
-            $colors = ['bg' => '#d4edda', 'border' => '#2dce89'];
-        } elseif ($status === 'rejected') {
-            $colors = ['bg' => '#f8d7da', 'border' => '#f5365c'];
-        }
 
         $title = !empty($row['case_display']) ? $row['case_display'] : 'General appointment';
         if (!empty($row['case_title']) && empty($row['case_display'])) {
@@ -156,13 +149,15 @@ try {
             'id' => (string) $row['id'],
             'title' => $title,
             'start' => $row['starts_at'],
-            'backgroundColor' => $colors['bg'],
-            'borderColor' => $colors['border'],
+            'backgroundColor' => 'transparent',
+            'borderColor' => 'transparent',
+            'textColor' => '#344767',
             'extendedProps' => [
                 'client' => $row['client_name'] !== '' ? $row['client_name'] : 'Unknown client',
                 'lawyer' => $row['lawyer_name'] !== '' ? $row['lawyer_name'] : 'Unassigned',
                 'notes' => $row['notes'] ?? '',
-                'status' => ucfirst($status),
+                'status' => $status,
+                'statusLabel' => ucfirst($status === 'approved' ? 'accepted' : $status),
                 'appointmentId' => (int) $row['id'],
             ],
         ];
@@ -278,7 +273,7 @@ $html = <<<'HTML'
     <link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
     <link href="../assets/css/app-font-montserrat.css?v=1" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
-    <link href="../assets/css/dashboard-enhancements.css?v=2" rel="stylesheet" />
+    <link href="../assets/css/dashboard-enhancements.css?v=3" rel="stylesheet" />
 </head>
 <body class="g-sidenav-show bg-gray-100 legalpro-admin-portal">
     <div class="min-height-300 bg-legalpro-admin position-absolute w-100"></div>
@@ -545,7 +540,7 @@ $html = <<<'HTML'
                         <label class="text-xs font-weight-bold text-uppercase opacity-7">Notes</label>
                         <div id="modalNotes" class="p-3 bg-gray-100 border-radius-lg text-sm text-secondary" style="white-space: pre-wrap; min-height: 60px;"></div>
                     </div>
-                    <a id="modalEditLink" href="new_appointment.php" class="btn btn-sm bg-gradient-dark mb-0 w-100">Edit appointment</a>
+                    <a id="modalEditLink" href="appointments.php" class="btn btn-sm bg-gradient-dark mb-0 w-100">Edit appointment</a>
                 </div>
             </div>
         </div>
@@ -674,7 +669,7 @@ $html = <<<'HTML'
                 document.getElementById('modalTitle').innerText = eventLike.title || 'Appointment';
                 document.getElementById('modalClient').innerText = props.client || '—';
                 document.getElementById('modalLawyer').innerText = props.lawyer || '—';
-                document.getElementById('modalStatus').innerText = props.status || 'Pending';
+                document.getElementById('modalStatus').innerText = props.statusLabel || props.status || 'Pending';
                 document.getElementById('modalNotes').innerText = props.notes || 'No notes added.';
                 var start = eventLike.start instanceof Date ? eventLike.start : new Date(eventLike.start);
                 var timeText = formatDateTime(start);
@@ -686,6 +681,28 @@ $html = <<<'HTML'
                 var editId = props.appointmentId || eventLike.id;
                 document.getElementById('modalEditLink').href = 'new_appointment.php?id=' + editId;
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('appointmentModal')).show();
+            }
+
+            function appointmentStatusKey(status) {
+                var value = String(status || 'pending').toLowerCase();
+                if (value === 'approved') return 'accepted';
+                return value;
+            }
+
+            function renderCalendarEvent(arg) {
+                var props = arg.event.extendedProps || {};
+                var statusKey = appointmentStatusKey(props.status);
+                var timeText = arg.timeText || '';
+                var title = arg.event.title || 'Appointment';
+                if (title.length > 22) {
+                    title = title.slice(0, 19) + '...';
+                }
+                var wrap = document.createElement('div');
+                wrap.className = 'dashboard-cal-event';
+                wrap.innerHTML =
+                    '<span class="dashboard-cal-event__dot dashboard-cal-event__dot--' + statusKey + '"></span>' +
+                    '<span class="dashboard-cal-event__text">' + timeText + (timeText ? ' ' : '') + title + '</span>';
+                return { domNodes: [wrap] };
             }
 
             document.getElementById('upcomingAppointmentsList').addEventListener('click', function(e) {
@@ -710,14 +727,19 @@ $html = <<<'HTML'
                 firstDay: 1,
                 navLinks: true,
                 nowIndicator: true,
+                fixedWeekCount: false,
+                dayMaxEvents: 3,
+                moreLinkClick: 'day',
                 buttonText: { today: 'Today', month: 'Month', week: 'Week', list: 'List' },
                 eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+                dayHeaderFormat: { weekday: 'short' },
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
                     right: 'dayGridMonth,timeGridWeek,listWeek'
                 },
                 events: appointmentEvents,
+                eventContent: renderCalendarEvent,
                 eventClick: function(info) {
                     info.jsEvent.preventDefault();
                     openAppointmentModal(info.event);

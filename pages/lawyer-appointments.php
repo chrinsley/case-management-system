@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../inc/db.php';
+require_once __DIR__ . '/../lib/case_lawyers.php';
 
 // Check if lawyer is logged in
 if (!isset($_SESSION['lawyer_id'])) {
@@ -74,6 +75,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appointment_action'])
                 $status = $statusMap[$action];
                 $stmt = $pdo->prepare("UPDATE appointments SET status = ? WHERE id = ? AND lawyer_id = ?");
                 $stmt->execute([$status, $appointmentId, $lawyerId]);
+
+                if ($status === 'accepted' && !empty($appointment['case_id'])) {
+                    ensureLawyerAssignedToCase($pdo, (int) $appointment['case_id'], $lawyerId);
+                }
 
                 $labelMap = [
                     'accept' => 'accepted',
@@ -156,13 +161,13 @@ function buildLawyerAppointmentActions(array $appointment): string
     $timeVal = date('H:i', strtotime($appointment['starts_at']));
     $defaultRescheduleStatus = ($status === 'accepted') ? 'accepted' : 'pending';
 
-    $html = '<div class="d-flex flex-wrap gap-1 justify-content-end align-items-center">';
+    $html = '<div class="lawyer-appointment-actions">';
 
     $html .= '<a href="lawyer-case-view.php?id=' . $caseId . '" class="btn btn-sm btn-outline-dark mb-0">Case</a>';
 
     if ($status !== 'accepted') {
         $html .= '
-        <form method="post" class="d-inline">
+        <form method="post" class="lawyer-appointment-actions__form">
             <input type="hidden" name="appointment_id" value="' . $id . '">
             <input type="hidden" name="appointment_action" value="accept">
             <button type="submit" class="btn btn-sm btn-success mb-0" onclick="return confirm(\'Accept this appointment?\')">Accept</button>
@@ -171,7 +176,7 @@ function buildLawyerAppointmentActions(array $appointment): string
 
     if ($status !== 'rejected') {
         $html .= '
-        <form method="post" class="d-inline">
+        <form method="post" class="lawyer-appointment-actions__form">
             <input type="hidden" name="appointment_id" value="' . $id . '">
             <input type="hidden" name="appointment_action" value="reject">
             <button type="submit" class="btn btn-sm btn-danger mb-0" onclick="return confirm(\'Reject this appointment?\')">Reject</button>
@@ -180,10 +185,10 @@ function buildLawyerAppointmentActions(array $appointment): string
 
     if ($status !== 'pending') {
         $html .= '
-        <form method="post" class="d-inline">
+        <form method="post" class="lawyer-appointment-actions__form">
             <input type="hidden" name="appointment_id" value="' . $id . '">
             <input type="hidden" name="appointment_action" value="pending">
-            <button type="submit" class="btn btn-sm btn-warning mb-0" onclick="return confirm(\'Keep this appointment as pending?\')">Keep pending</button>
+            <button type="submit" class="btn btn-sm btn-warning mb-0" onclick="return confirm(\'Keep this appointment as pending?\')">Pending</button>
         </form>';
     }
 
@@ -255,7 +260,7 @@ if (empty($appointments)) {
             </td>
             <td>' . htmlspecialchars($appointment['notes'] ?: 'No notes') . '</td>
             <td class="text-center">' . $statusBadge . '</td>
-            <td class="text-end">' . buildLawyerAppointmentActions($appointment) . '</td>
+            <td class="text-end lawyer-appointment-actions-cell">' . buildLawyerAppointmentActions($appointment) . '</td>
         </tr>';
     }
 }
@@ -280,6 +285,29 @@ $html = <<<'HTML'
     <link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
     <link href="../assets/css/app-font-montserrat.css?v=2" rel="stylesheet" />
     <link href="../assets/css/legalpro-lawyer-portal.css?v=2" rel="stylesheet" />
+    <style>
+        .lawyer-appointment-actions {
+            align-items: center;
+            display: inline-flex;
+            flex-wrap: nowrap;
+            gap: 0.35rem;
+            justify-content: flex-end;
+            white-space: nowrap;
+        }
+        .lawyer-appointment-actions__form {
+            display: inline-flex;
+            margin: 0;
+        }
+        .lawyer-appointment-actions .btn {
+            padding-left: 0.4rem;
+            padding-right: 0.4rem;
+            white-space: nowrap;
+        }
+        .lawyer-appointment-actions-cell {
+            white-space: nowrap;
+            width: 1%;
+        }
+    </style>
 </head>
 <body class="g-sidenav-show bg-gray-100 legalpro-lawyer-portal lawyer-appointments-page">
     <div class="min-height-300 bg-legalpro-lawyer position-absolute w-100"></div>

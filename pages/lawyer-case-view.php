@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../inc/db.php';
 require_once __DIR__ . '/../lib/case_events.php';
+require_once __DIR__ . '/../lib/case_lawyers.php';
 
 // Check if lawyer is logged in
 if (!isset($_SESSION['lawyer_id'])) {
@@ -67,16 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
     }
 }
 
-// Check if this case is assigned to the logged-in lawyer
+// Check if this case is assigned to the logged-in lawyer or linked via an appointment
 try {
-    $stmt = $pdo->prepare("
-        SELECT COUNT(*) FROM case_lawyers
-        WHERE case_id = ? AND lawyer_id = ?
-    ");
-    $stmt->execute([$caseId, $lawyerId]);
-    if (!$stmt->fetchColumn()) {
+    if (!lawyerHasCaseAccess($pdo, $caseId, $lawyerId)) {
         die('Access denied: This case is not assigned to you.');
     }
+    ensureLawyerAssignedToCase($pdo, $caseId, $lawyerId);
 } catch (PDOException $e) {
     die('Error checking case access: ' . htmlspecialchars($e->getMessage()));
 }

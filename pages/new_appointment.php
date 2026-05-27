@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../inc/db.php';
 require_once __DIR__ . '/../lib/case_events.php';
+require_once __DIR__ . '/../lib/case_lawyers.php';
 
 if (!isset($_SESSION['admin_id'])) {
     header('Location: admin-login.php');
@@ -122,6 +123,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
 
                         $msg = 'Appointment booked successfully.';
                     }
+
+                    ensureLawyerAssignedToCase($pdo, $caseId, $lawyerId);
 
                     header('Location: appointments.php?msg=' . urlencode($msg) . '&type=success');
                     exit;
