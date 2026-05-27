@@ -1,10 +1,5 @@
 <?php
 require_once __DIR__ . '/inc/db.php';
-<<<<<<< HEAD
-
-$message = '';
-$messageType = '';
-=======
 require_once __DIR__ . '/inc/password-validation.php';
 
 $message = '';
@@ -21,7 +16,6 @@ $resetPasswordInvalidClass = '';
 $resetConfirmInvalidClass = '';
 $updatePasswordInvalidClass = '';
 $updateConfirmInvalidClass = '';
->>>>>>> f827a933538474659c1629f07f5a4af06a073209
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = isset($_POST['action']) ? $_POST['action'] : '';
@@ -33,12 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $email = trim($_POST['email']);
             $role = $_POST['role'];
 
-<<<<<<< HEAD
-            if (empty($username) || empty($password)) {
-                $message = 'Username and password are required.';
-                $messageType = 'danger';
-            } else {
-=======
             $passwordConfirm = isset($_POST['password_confirm']) ? $_POST['password_confirm'] : '';
 
             if (empty($username)) {
@@ -57,7 +45,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if ($messageType !== 'danger') {
->>>>>>> f827a933538474659c1629f07f5a4af06a073209
                 // Check if user already exists
                 $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
                 $stmt->execute([$username]);
