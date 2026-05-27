@@ -23,6 +23,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: settings.php?msg=' . urlencode('Currency updated successfully.') . '&type=success');
             exit;
         }
+    } elseif ($formType === 'add_service') {
+        $serviceName = isset($_POST['service_name']) ? trim($_POST['service_name']) : '';
+        if ($serviceName === '') {
+            $message = 'Service name is required.';
+            $messageType = 'danger';
+        } else {
+            $services = getOfferedServices();
+            if (in_array($serviceName, $services, true)) {
+                $message = 'That service already exists.';
+                $messageType = 'warning';
+            } else {
+                $services[] = $serviceName;
+                setOfferedServices($services);
+                header('Location: settings.php?msg=' . urlencode('Service added successfully.') . '&type=success');
+                exit;
+            }
+        }
+    } elseif ($formType === 'remove_service') {
+        $serviceIndex = isset($_POST['service_index']) ? (int) $_POST['service_index'] : -1;
+        $services = getOfferedServices();
+        if (!isset($services[$serviceIndex])) {
+            $message = 'Service not found.';
+            $messageType = 'danger';
+        } else {
+            array_splice($services, $serviceIndex, 1);
+            setOfferedServices($services);
+            header('Location: settings.php?msg=' . urlencode('Service removed successfully.') . '&type=success');
+            exit;
+        }
+    }
+}
+
+$offeredServices = getOfferedServices();
+$servicesListHtml = '';
+if (empty($offeredServices)) {
+    $servicesListHtml = '<li class="list-group-item text-center text-muted">No services added yet</li>';
+} else {
+    foreach ($offeredServices as $index => $serviceName) {
+        $servicesListHtml .= '<li class="list-group-item d-flex justify-content-between align-items-center">'
+            . htmlspecialchars($serviceName)
+            . '<form method="post" class="d-inline mb-0" onsubmit="return confirm(\'Remove this service?\');">'
+            . '<input type="hidden" name="form_type" value="remove_service">'
+            . '<input type="hidden" name="service_index" value="' . (int) $index . '">'
+            . '<button type="submit" class="btn btn-sm btn-danger">Remove</button>'
+            . '</form></li>';
     }
 }
 
@@ -167,19 +212,33 @@ $html = <<<'HTML'
 					<div class="card">
 						<div class="card-header pb-0 d-flex justify-content-between align-items-center">
 							<h6>Services Offered</h6>
-							<button class="btn btn-sm btn-dark">Add Service</button>
+							<button type="button" class="btn btn-sm btn-dark" data-bs-toggle="modal" data-bs-target="#addServiceModal">Add Service</button>
 						</div>
 						<div class="card-body">
 							<ul class="list-group">
-								<li class="list-group-item d-flex justify-content-between align-items-center">
-									Contract Law
-									<button class="btn btn-sm btn-danger">Remove</button>
-								</li>
-								<li class="list-group-item d-flex justify-content-between align-items-center">
-									Family Law
-									<button class="btn btn-sm btn-danger">Remove</button>
-								</li>
+								{SERVICES_LIST}
 							</ul>
+						</div>
+					</div>
+					<div class="modal fade" id="addServiceModal" tabindex="-1" aria-labelledby="addServiceModalLabel" aria-hidden="true">
+						<div class="modal-dialog">
+							<div class="modal-content">
+								<form method="post">
+									<input type="hidden" name="form_type" value="add_service">
+									<div class="modal-header">
+										<h5 class="modal-title" id="addServiceModalLabel">Add Service</h5>
+										<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+									</div>
+									<div class="modal-body">
+										<label class="form-control-label">Service Name</label>
+										<input type="text" class="form-control" name="service_name" required placeholder="e.g. Contract Law">
+									</div>
+									<div class="modal-footer">
+										<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+										<button type="submit" class="btn btn-dark">Add Service</button>
+									</div>
+								</form>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -232,5 +291,6 @@ ob_start(); include __DIR__ . '/../inc/footer.php'; $footer = ob_get_clean();
 $html = preg_replace('/<\/body>\s*<\/html>$/i', $footer . "\n</body>\n</html>", $html);
 $html = str_replace('{MESSAGE}', $messageHtml, $html);
 $html = str_replace('{CURRENCY_OPTIONS}', $currencyOptionsHtml, $html);
+$html = str_replace('{SERVICES_LIST}', $servicesListHtml, $html);
 echo $html;
 ?>
