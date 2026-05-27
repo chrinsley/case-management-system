@@ -1,3 +1,4 @@
+
 <?php
 session_start();
 require_once __DIR__ . '/../inc/db.php';
@@ -544,7 +545,7 @@ $html = <<<'HTML'
                         <label class="text-xs font-weight-bold text-uppercase opacity-7">Notes</label>
                         <div id="modalNotes" class="p-3 bg-gray-100 border-radius-lg text-sm text-secondary" style="white-space: pre-wrap; min-height: 60px;"></div>
                     </div>
-                    <a id="modalEditLink" href="appointments.php" class="btn btn-sm bg-gradient-dark mb-0 w-100">Edit appointment</a>
+                    <a id="modalEditLink" href="new_appointment.php" class="btn btn-sm bg-gradient-dark mb-0 w-100">Edit appointment</a>
                 </div>
             </div>
         </div>
@@ -683,7 +684,7 @@ $html = <<<'HTML'
                 }
                 document.getElementById('modalTime').innerText = timeText;
                 var editId = props.appointmentId || eventLike.id;
-                document.getElementById('modalEditLink').href = 'appointments.php?id=' + editId + '#appointment-form';
+                document.getElementById('modalEditLink').href = 'new_appointment.php?id=' + editId;
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('appointmentModal')).show();
             }
 

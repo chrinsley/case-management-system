@@ -1,3 +1,4 @@
+
 <?php
 // inc/menunav.php
 // Clean navigation menu for LegalPro Case Manager
@@ -38,6 +39,12 @@ $menuItems = [
         'url' => 'appointments.php',
         'icon' => 'ni ni-time-alarm',
         'id' => 'appointments'
+    ],
+    [
+        'title' => 'New Appointment',
+        'url' => 'new_appointment.php',
+        'icon' => 'ni ni-fat-add',
+        'id' => 'new_appointment'
     ],
     [
         'title' => 'Court Tracking',
@@ -97,6 +104,9 @@ function isActive($itemId, $currentPage) {
     }
     if ($itemId === 'clients' && ($currentPage === 'clients' || $currentPage === 'client-detail')) {
         return true;
+    }
+    if ($itemId === 'appointments' && $currentPage === 'new_appointment') {
+        return false;
     }
     if ($itemId === 'billing' && $currentPage === 'billing') {
         return true;
