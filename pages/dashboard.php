@@ -7,7 +7,7 @@ if (!isset($_SESSION['admin_id'])) {
     header('Location: admin-login.php');
     exit;
 }
-
+lorem
 // Ensure cases table has all required columns
 try {
     $pdo->query("ALTER TABLE cases ADD COLUMN user_id INT NULL AFTER client_id");
