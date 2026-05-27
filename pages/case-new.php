@@ -1,4 +1,4 @@
-<?php
+git <?php
 session_start();
 require_once __DIR__ . '/../inc/db.php';
 
@@ -448,6 +448,19 @@ $html = <<<'HTML'
 	<script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
 	<link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
 <link href="../assets/css/app-font-montserrat.css?v=1" rel="stylesheet" />
+	<style>
+		.case-details-form .form-group { margin-bottom: 1rem; }
+		.case-details-form .row.g-3 { margin-bottom: 1rem; }
+		.case-details-form .row.g-3:last-of-type { margin-bottom: 0; }
+		.case-details-form .row.g-3 > [class*="col-"] > .form-group:last-child { margin-bottom: 0; }
+		.case-details-form .lawyer-picker {
+			max-height: 7.5rem;
+			overflow-y: auto;
+			padding: 0.5rem 0.75rem;
+		}
+		.case-details-form .lawyer-picker .form-check { margin-bottom: 0.35rem; }
+		.case-details-form .lawyer-picker .form-check:last-child { margin-bottom: 0; }
+	</style>
 </head>
 <body class="g-sidenav-show bg-gray-100 legalpro-admin-portal">
 	<div class="min-height-300 bg-legalpro-admin position-absolute w-100"></div>
@@ -474,35 +487,35 @@ $html = <<<'HTML'
 						</div>
 						<div class="card-body">
 							{MESSAGE}
-							<form method="post">
+							<form method="post" class="case-details-form">
 								<input type="hidden" name="form_type" value="save">
 								<input type="hidden" name="case_id" value="{CASE_ID}">
-								<div class="row">
+								<div class="row align-items-start g-3">
 									<div class="col-md-6">
 										<div class="form-group">
 											<label class="form-control-label">Client <span class="text-danger">*</span></label>
 											<select class="form-control" name="client_id" required>
 												{CLIENT_OPTIONS}
 											</select>
-											<small class="text-xs"><a href="clients.php">Add new client</a></small>
-										</div>
-									</div>
-									<div class="col-md-6">
-										<div class="form-group">
-											<label class="form-control-label">Assigned Lawyers</label>
-											<div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
-												{LAWYER_CHECKBOXES}
+											<div class="mt-2">
+												<a href="client-detail.php" class="btn btn-primary btn-sm mb-0">Add new client</a>
 											</div>
 										</div>
-									</div>
-								</div>
-								<div class="row">
-									<div class="col-md-6">
 										<div class="form-group">
 											<label class="form-control-label">Case Title <span class="text-danger">*</span></label>
 											<input class="form-control" type="text" name="title" placeholder="e.g., Contract Dispute" value="{TITLE_VALUE}" required>
 										</div>
 									</div>
+									<div class="col-md-6">
+										<div class="form-group">
+											<label class="form-control-label">Assigned Lawyers</label>
+											<div class="border rounded lawyer-picker">
+												{LAWYER_CHECKBOXES}
+											</div>
+										</div>
+									</div>
+								</div>
+								<div class="row g-3">
 									<div class="col-md-3">
 										<div class="form-group">
 											<label class="form-control-label">Start Date</label>
@@ -519,8 +532,18 @@ $html = <<<'HTML'
 											</select>
 										</div>
 									</div>
+									<div class="col-md-3">
+										<div class="form-group">
+											<label class="form-control-label">Status</label>
+											<select class="form-control" name="status">
+												<option value="open"{STATUS_OPEN}>Open</option>
+												<option value="in_progress"{STATUS_IN_PROGRESS}>In Progress</option>
+												<option value="closed"{STATUS_CLOSED}>Closed</option>
+											</select>
+										</div>
+									</div>
 								</div>
-								<div class="row">
+								<div class="row g-3">
 									<div class="col-md-4">
 										<div class="form-group">
 											<label class="form-control-label">Category</label>
@@ -545,14 +568,6 @@ $html = <<<'HTML'
 											<input class="form-control" type="date" name="expected_completion" value="{EXPECTED_COMPLETION_VALUE}">
 										</div>
 									</div>
-								</div>
-								<div class="form-group">
-									<label class="form-control-label">Status</label>
-									<select class="form-control" name="status">
-										<option value="open"{STATUS_OPEN}>Open</option>
-										<option value="in_progress"{STATUS_IN_PROGRESS}>In Progress</option>
-										<option value="closed"{STATUS_CLOSED}>Closed</option>
-									</select>
 								</div>
 								<div class="form-group">
 									<label class="form-control-label">Services & Fees</label>
