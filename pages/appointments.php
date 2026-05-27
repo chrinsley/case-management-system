@@ -359,13 +359,6 @@ if (empty($appointments)) {
                 break;
         }
 
-        $appointmentId = (int)$appointment['id'];
-        $caseId = isset($appointment['case_id']) ? (int)$appointment['case_id'] : 0;
-        $viewHref = $caseId > 0
-            ? 'case-view.php?id=' . $caseId
-            : 'appointments.php?id=' . $appointmentId . '#appointment-form';
-        $editHref = 'appointments.php?id=' . $appointmentId . '#appointment-form';
-
         $appointmentsRows .= '
         <tr>
             <td class="ps-3">
@@ -389,11 +382,14 @@ if (empty($appointments)) {
             <td class="text-center">
                 <span class="badge ' . $badgeClass . ' badge-sm">' . $statusText . '</span>
             </td>
-            <td class="align-middle text-end pe-3 appointment-actions-col">
-                <div class="appointment-actions">
-                    <a class="btn btn-sm btn-primary mb-0" href="' . htmlspecialchars($viewHref) . '" title="View">View</a>
-                    <a class="btn btn-sm btn-dark mb-0" href="' . htmlspecialchars($editHref) . '" title="Edit">Edit</a>
-                    <button type="button" class="btn btn-sm btn-danger mb-0" title="Delete" onclick="deleteAppointment(' . $appointmentId . ', \'' . addslashes($caseDisplay) . '\')">Delete</button>
+            <td class="text-end pe-3">
+                <div class="d-flex gap-1 justify-content-end">
+                    <a href="javascript:void(0)" class="btn btn-sm btn-dark mb-0" title="Edit" onclick="window.location.href=\'appointments.php?id=' . (int)$appointment['id'] . '#appointment-form\'; return false;">
+                        <i class="ni ni-ruler-pencil"></i>
+                    </a>
+                    <a href="javascript:void(0)" class="btn btn-sm btn-danger mb-0" title="Delete" onclick="deleteAppointment(' . (int)$appointment['id'] . ', \'' . addslashes($caseDisplay) . '\'); return false;">
+                        <i class="ni ni-fat-remove"></i>
+                    </a>
                 </div>
             </td>
         </tr>';
@@ -403,18 +399,16 @@ if (empty($appointments)) {
 // Render message block
 $messageHtml = '';
 if ($message) {
-    $successClass = ($messageType === 'success') ? ' text-white' : '';
-    $closeClass = ($messageType === 'success') ? ' btn-close-white' : '';
-    $messageHtml = '<div class="alert alert-' . htmlspecialchars($messageType) . ' alert-dismissible fade show' . $successClass . '" role="alert">
+    $messageHtml = '<div class="alert alert-' . htmlspecialchars($messageType) . ' alert-dismissible fade show" role="alert">
         ' . htmlspecialchars($message) . '
-        <button type="button" class="btn-close' . $closeClass . '" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>';
 }
 
 $isEditing = !empty($formData['appointment_id']);
 $formTitle = $isEditing ? 'Update Appointment' : 'Book Appointment';
 $submitLabel = $isEditing ? 'Save Changes' : 'Submit Request';
-$cancelLink = $isEditing ? '<a href="appointments.php" class="btn btn-sm btn-outline-secondary mb-0" title="Cancel editing">Cancel</a>' : '';
+$cancelLink = $isEditing ? '<a href="appointments.php" class="btn btn-outline-secondary btn-sm mb-0" title="Cancel editing"><i class="ni ni-fat-remove me-1"></i> Cancel</a>' : '';
 
 $html = <<<'HTML'
 <!DOCTYPE html>
@@ -431,31 +425,8 @@ $html = <<<'HTML'
 	<script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
 	<link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
 <link href="../assets/css/app-font-montserrat.css?v=1" rel="stylesheet" />
-	<style>
-		.appointments-page .appointment-actions-col {
-			min-width: 14rem;
-			width: 14rem;
-			white-space: nowrap;
-		}
-		.appointments-page .appointment-actions {
-			display: inline-flex;
-			flex-wrap: nowrap;
-			align-items: center;
-			gap: 0.35rem;
-			justify-content: flex-end;
-		}
-		.appointments-page .appointment-actions .btn {
-			width: 4.25rem;
-			min-width: 4.25rem;
-			padding-left: 0.25rem;
-			padding-right: 0.25rem;
-			white-space: nowrap;
-			line-height: 1.25;
-			text-align: center;
-		}
-	</style>
 </head>
-<body class="g-sidenav-show bg-gray-100 legalpro-admin-portal appointments-page">
+<body class="g-sidenav-show bg-gray-100 legalpro-admin-portal">
 	<div class="min-height-300 bg-legalpro-admin position-absolute w-100"></div>
 	<aside class="sidenav bg-white navbar navbar-vertical navbar-expand-xs border-0 border-radius-xl my-3 fixed-start ms-4 " id="sidenav-main">
 		<div class="sidenav-header">
@@ -613,7 +584,7 @@ $html = <<<'HTML'
 											<th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Lawyer / Staff</th>
 											<th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 text-center">Date & Time</th>
 											<th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 text-center">Status</th>
-											<th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 text-end pe-3 appointment-actions-col">Actions</th>
+											<th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 text-end pe-3">Actions</th>
 										</tr>
 									</thead>
 									<tbody>

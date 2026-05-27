@@ -268,6 +268,26 @@ $html = <<<'HTML'
 	<script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
 	<link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
 <link href="../assets/css/app-font-montserrat.css?v=1" rel="stylesheet" />
+	<style>
+		/* Plain checkbox for "Create user account" — avoids broken Font Awesome glyph box */
+		#create_user_account.form-check-input::after {
+			content: none !important;
+			display: none !important;
+		}
+		#create_user_account.form-check-input:not(:checked) {
+			background-color: #fff !important;
+			background-image: none !important;
+			border: 1px solid #d2d6da !important;
+		}
+		#create_user_account.form-check-input:checked {
+			background-color: #5e72e4 !important;
+			background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10l3 3 8-8'/%3e%3c/svg%3e") !important;
+			background-size: 75% 75% !important;
+			background-position: center !important;
+			background-repeat: no-repeat !important;
+			border: 0 !important;
+		}
+	</style>
 </head>
 <body class="g-sidenav-show bg-gray-100 legalpro-admin-portal">
 	<div class="min-height-300 bg-legalpro-admin position-absolute w-100"></div>

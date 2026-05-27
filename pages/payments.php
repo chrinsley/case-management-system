@@ -259,25 +259,19 @@ foreach ($cases as $case) {
     if ($balance > 0.01) {
         $outstandingCount++;
         $totalOutstanding += $balance;
-        $badgeClass = 'badge bg-gradient-warning';
-        if ($balance <= ($estimated * 0.2)) {
-            $badgeClass = 'badge bg-gradient-success';
-        }
 
         $outstandingRows .= '
         <tr>
-            <td>
+            <td class="ps-4">
                 <div class="d-flex flex-column">
-                    <span class="text-sm fw-bold">' . htmlspecialchars($caseNumber . ' · ' . $case['title']) . '</span>
+                    <span class="text-sm font-weight-bold mb-0">' . htmlspecialchars($caseNumber . ' · ' . $case['title']) . '</span>
                     <small class="text-muted">' . htmlspecialchars($clientName) . '</small>
                 </div>
             </td>
-            <td class="text-center">' . formatCurrency($estimated) . '</td>
-            <td class="text-center text-success fw-bold">' . formatCurrency($paid) . '</td>
-            <td class="text-center">
-                <span class="' . $badgeClass . '">' . formatCurrency($balance) . '</span>
-            </td>
-            <td class="text-end text-xs">' . ($lastPayment !== '—' ? htmlspecialchars($lastPayment) : '<span class="text-muted">No payments</span>') . '</td>
+            <td class="text-center text-sm">' . formatCurrency($estimated) . '</td>
+            <td class="text-center text-sm text-success font-weight-bold">' . formatCurrency($paid) . '</td>
+            <td class="text-center text-sm font-weight-bold text-warning">' . formatCurrency($balance) . '</td>
+            <td class="text-end text-xs pe-4">' . ($lastPayment !== '—' ? htmlspecialchars($lastPayment) : '<span class="text-muted">No payments</span>') . '</td>
         </tr>';
     }
 }
@@ -330,20 +324,23 @@ if (empty($recentPayments)) {
         $caseNumber = 'C-' . str_pad($payment['case_id'], 4, '0', STR_PAD_LEFT);
         $clientName = isset($payment['client_name']) && $payment['client_name'] ? $payment['client_name'] : 'Unknown Client';
         $methodLabel = isset($allowedMethods[$payment['method']]) ? $allowedMethods[$payment['method']] : ucfirst($payment['method']);
-        $notesPreview = isset($payment['notes']) && $payment['notes'] ? htmlspecialchars($payment['notes']) : '<span class="text-muted">—</span>';
+        $notesRaw = isset($payment['notes']) ? trim($payment['notes']) : '';
+        $notesPreview = $notesRaw !== ''
+            ? '<span class="text-xs text-secondary d-inline-block text-truncate payments-notes-cell" title="' . htmlspecialchars($notesRaw) . '">' . htmlspecialchars($notesRaw) . '</span>'
+            : '<span class="text-muted">—</span>';
 
         $recentPaymentsRows .= '
         <tr>
-            <td>
+            <td class="ps-4">
                 <div class="d-flex flex-column">
-                    <span class="text-sm fw-bold">' . htmlspecialchars($clientName) . '</span>
-                    <small class="text-muted">' . htmlspecialchars($caseNumber . ' · ' . $payment['case_title']) . '</small>
+                    <span class="text-sm font-weight-bold mb-0">' . htmlspecialchars($clientName) . '</span>
+                    <small class="text-muted">' . htmlspecialchars($caseNumber . ' · ' . ($payment['case_title'] ?: 'No case')) . '</small>
                 </div>
             </td>
-            <td class="text-center">' . formatCurrency($payment['amount']) . '</td>
-            <td class="text-center"><span class="badge bg-gradient-dark">' . htmlspecialchars($methodLabel) . '</span></td>
-            <td class="text-center">' . htmlspecialchars($payment['payment_date']) . '</td>
-            <td class="text-end text-xs">' . $notesPreview . '</td>
+            <td class="text-center text-sm font-weight-bold">' . formatCurrency($payment['amount']) . '</td>
+            <td class="text-center"><span class="badge badge-sm bg-gradient-secondary">' . htmlspecialchars($methodLabel) . '</span></td>
+            <td class="text-center text-sm">' . htmlspecialchars($payment['payment_date']) . '</td>
+            <td class="text-end text-xs pe-4">' . $notesPreview . '</td>
         </tr>';
     }
 }
@@ -377,6 +374,33 @@ $html = <<<'HTML'
     <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
     <link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
 <link href="../assets/css/app-font-montserrat.css?v=1" rel="stylesheet" />
+    <style>
+        .payments-summary-card .card-header {
+            padding: 1.25rem 1.5rem 0.75rem;
+        }
+        .payments-summary-card .card-header h6 {
+            margin-bottom: 0;
+            font-weight: 700;
+        }
+        .payments-summary-card .table thead th {
+            font-size: 0.65rem;
+            letter-spacing: 0.04em;
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+            background: rgba(248, 249, 250, 0.9);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+        .payments-summary-card .table tbody td {
+            vertical-align: middle;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+        }
+        .payments-summary-card .table tbody tr:last-child td {
+            border-bottom: 0;
+        }
+        .payments-notes-cell {
+            max-width: 16rem;
+        }
+    </style>
 </head>
 <body class="g-sidenav-show bg-gray-100 legalpro-admin-portal">
     <div class="min-height-300 bg-legalpro-admin position-absolute w-100"></div>
@@ -580,22 +604,23 @@ $html = <<<'HTML'
                     </div>
                 </div>
             </div>
-            <div class="row mt-4">
-                <div class="col-lg-7">
-                    <div class="card">
+            <div class="row mt-4 g-4">
+                <div class="col-12">
+                    <div class="card payments-summary-card mb-0">
                         <div class="card-header pb-0">
                             <h6>Recent Payments</h6>
+                            <p class="text-sm text-muted mb-0">Latest payment activity across all cases.</p>
                         </div>
-                        <div class="card-body px-0 pt-0 pb-2">
+                        <div class="card-body px-0 pt-2 pb-2">
                             <div class="table-responsive">
                                 <table class="table align-items-center mb-0">
                                     <thead>
                                         <tr>
-                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Client / Case</th>
+                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-4">Client / Case</th>
                                             <th class="text-uppercase text-secondary text-xxs font-weight-bolder text-center opacity-7">Amount</th>
                                             <th class="text-uppercase text-secondary text-xxs font-weight-bolder text-center opacity-7">Method</th>
                                             <th class="text-uppercase text-secondary text-xxs font-weight-bolder text-center opacity-7">Date</th>
-                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder text-end opacity-7">Notes</th>
+                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder text-end opacity-7 pe-4">Notes</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -606,22 +631,22 @@ $html = <<<'HTML'
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-5 mt-4 mt-lg-0">
-                    <div class="card h-100">
+                <div class="col-12">
+                    <div class="card payments-summary-card mb-0">
                         <div class="card-header pb-0">
                             <h6>Outstanding Balances</h6>
                             <p class="text-sm text-muted mb-0">Track cases still on a payment plan.</p>
                         </div>
-                        <div class="card-body px-0 pt-0 pb-2">
+                        <div class="card-body px-0 pt-2 pb-2">
                             <div class="table-responsive">
                                 <table class="table align-items-center mb-0">
                                     <thead>
                                         <tr>
-                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Case</th>
+                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-4">Case</th>
                                             <th class="text-uppercase text-secondary text-xxs font-weight-bolder text-center opacity-7">Fee</th>
                                             <th class="text-uppercase text-secondary text-xxs font-weight-bolder text-center opacity-7">Paid</th>
                                             <th class="text-uppercase text-secondary text-xxs font-weight-bolder text-center opacity-7">Balance</th>
-                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder text-end opacity-7">Last Payment</th>
+                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder text-end opacity-7 pe-4">Last Payment</th>
                                         </tr>
                                     </thead>
                                     <tbody>

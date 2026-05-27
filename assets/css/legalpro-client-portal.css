@@ -1,21 +1,4 @@
 /**
-<<<<<<< HEAD
- * LegalPro client portal — full-page gradient (matches top header strip).
- */
-:root {
-    --client-portal-gradient: linear-gradient(125deg, #5e72e4 0%, #324cdd 42%, #172b4d 100%);
-    --client-portal-bg-fallback: #324cdd;
-}
-
-body.client-dashboard-page,
-body.client-cases-page,
-body.client-appointments-page,
-body.client-court-tracking-page,
-body.client-payments-page,
-body.client-portal-page {
-    background: var(--client-portal-gradient) fixed !important;
-    background-color: var(--client-portal-bg-fallback) !important;
-=======
  * LegalPro client portal — full-page gradient (aligned with lawyer/admin portals).
  */
 :root {
@@ -57,7 +40,6 @@ body.g-sidenav-show.client-portal-page.bg-gray-100 {
     background-image: var(--client-portal-gradient) !important;
     background-repeat: no-repeat !important;
     background-size: cover !important;
->>>>>>> f827a933538474659c1629f07f5a4af06a073209
     min-height: 100vh;
 }
 
@@ -83,12 +65,9 @@ body.client-court-tracking-page .main-content > .container-fluid,
 body.client-payments-page .main-content > .container-fluid,
 body.client-portal-page .main-content > .container-fluid {
     background: transparent !important;
-<<<<<<< HEAD
-=======
     background-color: transparent !important;
     background-image: none !important;
     box-shadow: none !important;
->>>>>>> f827a933538474659c1629f07f5a4af06a073209
 }
 
 body.client-dashboard-page .main-content.border-radius-lg,
@@ -109,14 +88,6 @@ body.client-portal-page .main-content .card:not([class*="-hero"]) {
     background-color: #fff !important;
 }
 
-<<<<<<< HEAD
-body.client-portal-page .navbar-main {
-    backdrop-filter: blur(8px);
-    background: rgba(255, 255, 255, 0.86) !important;
-    border: 1px solid rgba(255, 255, 255, 0.6) !important;
-    box-shadow: 0 0.35rem 1.25rem rgba(52, 71, 103, 0.08) !important;
-    margin-top: 20px;
-=======
 body.client-dashboard-page .navbar-main,
 body.client-dashboard-page .navbar-main.blur,
 body.client-dashboard-page .navbar-main.shadow-blur,
@@ -214,5 +185,115 @@ body.client-portal-page .navbar-main .navbar-nav > .nav-item:first-child .nav-li
 body.client-portal-page .navbar-main .navbar-nav > .nav-item:first-child .nav-link span,
 body.client-portal-page .navbar-main .navbar-nav > .nav-item:first-child .nav-link i {
     color: #fff !important;
->>>>>>> f827a933538474659c1629f07f5a4af06a073209
+}
+
+/* Client sidebar — pin “Logged in as” + Logout to bottom (override Argon navbar-vertical) */
+aside.sidenav.legalpro-client-sidenav.navbar-vertical.navbar-expand-xs {
+    top: 1rem !important;
+    bottom: 1rem !important;
+    height: calc(100vh - 2rem) !important;
+    max-height: calc(100vh - 2rem) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    position: fixed !important;
+}
+
+aside.sidenav.legalpro-client-sidenav .sidenav-header,
+aside.sidenav.legalpro-client-sidenav > hr {
+    flex-shrink: 0;
+}
+
+aside.sidenav.legalpro-client-sidenav .legalpro-client-sidenav__nav,
+aside.sidenav.legalpro-client-sidenav .navbar-collapse {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    padding-bottom: 8.5rem !important;
+}
+
+aside.sidenav.legalpro-client-sidenav .legalpro-client-sidenav__nav .navbar-nav,
+aside.sidenav.legalpro-client-sidenav .navbar-collapse .navbar-nav {
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+}
+
+aside.sidenav.legalpro-client-sidenav .legalpro-client-sidenav__footer,
+aside.sidenav.legalpro-client-sidenav .sidenav-footer {
+    flex-shrink: 0 !important;
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0.85rem 1rem 1rem !important;
+    background: #fff;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    z-index: 2;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+}
+
+aside.sidenav.legalpro-client-sidenav .legalpro-client-sidenav__footer .btn {
+    min-width: 7.5rem;
+}
+
+/* Client sidenav nav icons only — purple / white like admin (scoped; page content unchanged) */
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link {
+    margin: 0.15rem 0.75rem;
+    border-radius: 12px;
+    transition: all 0.15s ease;
+}
+
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link .legalpro-client-nav-icon,
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link .icon {
+    min-width: 36px;
+    width: 36px;
+    height: 36px;
+    background-color: rgba(94, 114, 228, 0.08) !important;
+    color: #5e72e4;
+    transition: all 0.15s ease;
+}
+
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link .legalpro-client-nav-icon i,
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link .icon i {
+    color: #5e72e4 !important;
+    opacity: 0.9 !important;
+}
+
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link.active,
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link:hover {
+    background: linear-gradient(135deg, #5e72e4, #825ee4) !important;
+    color: #fff !important;
+    box-shadow: 0 10px 20px rgba(94, 114, 228, 0.25);
+}
+
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link.active .legalpro-client-nav-icon,
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link:hover .legalpro-client-nav-icon,
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link.active .icon,
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link:hover .icon {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link.active .legalpro-client-nav-icon i,
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link:hover .legalpro-client-nav-icon i,
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link.active .icon i,
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link:hover .icon i {
+    color: #fff !important;
+    opacity: 1 !important;
+}
+
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link.active .nav-link-text,
+aside.sidenav.legalpro-client-sidenav .navbar-nav > .nav-item > .nav-link:hover .nav-link-text {
+    color: #fff !important;
 }
