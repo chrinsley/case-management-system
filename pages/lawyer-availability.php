@@ -189,29 +189,6 @@ $html = <<<'HTML'
             display: grid;
             grid-template-columns: repeat(7, minmax(120px, 1fr));
         }
-        .availability-fallback-toolbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.75rem 1rem;
-            background: linear-gradient(310deg, #5e72e4 0%, #825ee4 100%);
-            color: #fff;
-            border-radius: 0.75rem 0.75rem 0 0;
-        }
-        .availability-fallback-toolbar .week-range-label {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: #fff;
-        }
-        .availability-fallback-toolbar .btn-week-nav {
-            background: #fff;
-            border: none;
-            color: #344767;
-            font-weight: 700;
-            padding: 0.35rem 0.75rem;
-            border-radius: 0.45rem;
-        }
         .availability-fallback-header > div {
             background: #f6f8fc;
             border-right: 1px solid #e9ecef;
@@ -222,31 +199,13 @@ $html = <<<'HTML'
             padding: 0.75rem;
             text-transform: uppercase;
         }
-        .availability-fallback-header .day-date {
-            display: block;
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: #67748e;
-            text-transform: none;
-            margin-top: 0.35rem;
-            letter-spacing: 0;
-        }
-        .availability-fallback-header .is-today {
-            background: rgba(94, 114, 228, 0.12);
-        }
-        .availability-fallback-header .is-today .day-date {
-            color: #5e72e4;
-            font-weight: 700;
-        }
         .availability-fallback-day {
             min-height: 150px;
             border-right: 1px solid #e9ecef;
-            border-bottom: 1px solid #e9ecef;
             padding: 0.75rem;
-            cursor: pointer;
         }
         .availability-fallback-day:hover {
-            background: rgba(94, 114, 228, 0.04);
+            background: #fafbfe;
         }
         .availability-fallback-event {
             border-radius: 0.45rem;
@@ -442,7 +401,6 @@ $html = <<<'HTML'
     <script>
         var availabilityEvents = {AVAILABILITY_EVENTS_JSON};
         var calendarLoaded = false;
-        var fallbackWeekStart = null;
 
         function dayNameFromDate(date) {
             return ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][date.getDay()];
@@ -453,33 +411,6 @@ $html = <<<'HTML'
             var month = String(date.getMonth() + 1).padStart(2, '0');
             var day = String(date.getDate()).padStart(2, '0');
             return year + '-' + month + '-' + day;
-        }
-
-        function startOfWeek(date) {
-            var d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-            d.setDate(d.getDate() - d.getDay());
-            return d;
-        }
-
-        function formatHeaderDate(date) {
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        }
-
-        function formatWeekRangeLabel(weekStart) {
-            var weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekStart.getDate() + 6);
-            var startFmt = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            var endFmt = weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            return startFmt + ' – ' + endFmt;
-        }
-
-        function shiftFallbackWeek(offsetDays) {
-            if (!fallbackWeekStart) {
-                fallbackWeekStart = startOfWeek(new Date());
-            }
-            var next = new Date(fallbackWeekStart);
-            next.setDate(next.getDate() + offsetDays);
-            renderAvailabilityFallbackCalendar(next);
         }
 
         function openAvailabilityModal(day, slotId, slotDate, startTime, endTime, slotType) {
@@ -499,22 +430,11 @@ $html = <<<'HTML'
             if (!calendarEl) return;
             try {
                 var calendar = new FullCalendar.Calendar(calendarEl, {
-                    initialView: 'dayGridWeek',
+                    initialView: 'dayGridMonth',
                     headerToolbar: {
                         left: 'prev,next today',
                         center: 'title',
-                        right: 'dayGridWeek,dayGridMonth,timeGridDay'
-                    },
-                    views: {
-                        dayGridWeek: {
-                            dayHeaderFormat: { weekday: 'long', month: 'short', day: 'numeric' }
-                        },
-                        dayGridMonth: {
-                            dayHeaderFormat: { weekday: 'short' }
-                        },
-                        timeGridDay: {
-                            dayHeaderFormat: { weekday: 'long', month: 'short', day: 'numeric' }
-                        }
+                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
                     },
                     events: availabilityEvents,
                     height: 'auto',
@@ -537,62 +457,30 @@ $html = <<<'HTML'
             }
         }
 
-        function renderAvailabilityFallbackCalendar(weekStartDate) {
+        function renderAvailabilityFallbackCalendar() {
             var calendarEl = document.getElementById('availabilityCalendar');
             if (!calendarEl) return;
-
-            fallbackWeekStart = weekStartDate ? startOfWeek(weekStartDate) : (fallbackWeekStart || startOfWeek(new Date()));
             var dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            var todayIso = dateToInputValue(new Date());
-
-            var html = '<div class="availability-fallback-calendar">';
-            html += '<div class="availability-fallback-toolbar">';
-            html += '<button type="button" class="btn btn-sm btn-week-nav mb-0" onclick="shiftFallbackWeek(-7)">&larr; Prev week</button>';
-            html += '<span class="week-range-label">' + formatWeekRangeLabel(fallbackWeekStart) + '</span>';
-            html += '<button type="button" class="btn btn-sm btn-week-nav mb-0" onclick="shiftFallbackWeek(7)">Next week &rarr;</button>';
-            html += '</div>';
-            html += '<div class="availability-fallback-header">';
-
-            for (var i = 0; i < 7; i++) {
-                var columnDate = new Date(fallbackWeekStart);
-                columnDate.setDate(fallbackWeekStart.getDate() + i);
-                var isoDate = dateToInputValue(columnDate);
-                var isToday = isoDate === todayIso;
-                html += '<div class="' + (isToday ? 'is-today' : '') + '">';
-                html += '<span class="day-name">' + dayNames[i] + '</span>';
-                html += '<span class="day-date">' + formatHeaderDate(columnDate) + '</span>';
-                html += '</div>';
-            }
-
+            var html = '<div class="availability-fallback-calendar"><div class="availability-fallback-header">';
+            dayNames.forEach(function(dayName) {
+                html += '<div>' + dayName + '</div>';
+            });
             html += '</div><div class="availability-fallback-grid">';
-
-            for (var j = 0; j < 7; j++) {
-                var cellDate = new Date(fallbackWeekStart);
-                cellDate.setDate(fallbackWeekStart.getDate() + j);
-                var cellIso = dateToInputValue(cellDate);
-                var cellDay = dayNames[j].toLowerCase();
-
-                html += '<div class="availability-fallback-day" onclick="openAvailabilityModal(\'' + cellDay + '\', \'\', \'' + cellIso + '\')">';
-
+            dayNames.forEach(function(dayName, dayIndex) {
+                html += '<div class="availability-fallback-day">';
                 var eventsForDay = availabilityEvents.filter(function(event) {
-                    var props = event.extendedProps || {};
-                    if (props.slotDate) {
-                        return props.slotDate === cellIso;
-                    }
-                    return event.start && dateToInputValue(new Date(event.start)) === cellIso;
+                    return event.start && new Date(event.start).getDay() === dayIndex;
                 });
-
                 if (eventsForDay.length === 0) {
                     html += '<p class="text-sm text-muted mb-0">No hours set</p>';
                 } else {
                     eventsForDay.forEach(function(event) {
                         var props = event.extendedProps || {};
-                        html += '<div class="availability-fallback-event" style="background-color:' + event.backgroundColor + '" onclick="event.stopPropagation(); openAvailabilityModal(\'' + (props.day || cellDay) + '\', \'' + (props.slotId || event.id) + '\', \'' + (props.slotDate || cellIso) + '\', \'' + props.startTime + '\', \'' + props.endTime + '\', \'' + props.slotType + '\')">' + event.title + '</div>';
+                        html += '<div class="availability-fallback-event" style="background-color:' + event.backgroundColor + '" onclick="openAvailabilityModal(\'' + props.day + '\', \'' + (props.slotId || event.id) + '\', \'' + (props.slotDate || '') + '\', \'' + props.startTime + '\', \'' + props.endTime + '\', \'' + props.slotType + '\')">' + event.title + '</div>';
                     });
                 }
                 html += '</div>';
-            }
-
+            });
             html += '</div></div>';
             calendarEl.innerHTML = html;
         }
