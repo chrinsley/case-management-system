@@ -26,6 +26,25 @@ foreach ($alterStatements as $statement) {
     }
 }
 
+function getNextInvoiceNumber(PDO $pdo): string
+{
+    $maxNum = 0;
+    try {
+        $stmt = $pdo->query("SELECT invoice_number FROM invoices WHERE invoice_number IS NOT NULL AND invoice_number != ''");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $num = $row['invoice_number'];
+            if (preg_match('/^INV\s+(\d+)/i', $num, $matches)) {
+                $maxNum = max($maxNum, (int)$matches[1]);
+            } elseif (preg_match('/^Invoice\s+(\d+)/i', $num, $matches)) {
+                $maxNum = max($maxNum, (int)$matches[1]);
+            }
+        }
+    } catch (PDOException $e) {
+        // default to INV 001
+    }
+    return 'INV ' . str_pad((string)($maxNum + 1), 3, '0', STR_PAD_LEFT);
+}
+
 $statusOptions = [
     'draft' => 'Draft',
     'sent' => 'Sent',
@@ -33,18 +52,9 @@ $statusOptions = [
     'overdue' => 'Overdue'
 ];
 
-// Generate next invoice number
-try {
-    $stmt = $pdo->query("SELECT MAX(CAST(SUBSTRING(invoice_number, 9) AS UNSIGNED)) as max_num FROM invoices WHERE invoice_number LIKE 'Invoice %'");
-    $result = $stmt->fetch();
-    $nextNumber = (isset($result['max_num']) ? $result['max_num'] : 0) + 1;
-} catch (PDOException $e) {
-    $nextNumber = 1;
-}
-
 $formData = [
     'invoice_id' => '',
-    'invoice_number' => 'Invoice ' . $nextNumber,
+    'invoice_number' => getNextInvoiceNumber($pdo),
     'client_id' => '',
     'case_id' => '',
     'amount' => '',
@@ -58,7 +68,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $formType = isset($_POST['form_type']) ? $_POST['form_type'] : '';
     if ($formType === 'save') {
         $invoiceId = isset($_POST['invoice_id']) ? (int)$_POST['invoice_id'] : 0;
-        $invoiceNumber = trim(isset($_POST['invoice_number']) ? $_POST['invoice_number'] : '');
         $clientId = isset($_POST['client_id']) ? (int)$_POST['client_id'] : 0;
         $caseId = isset($_POST['case_id']) ? (int)$_POST['case_id'] : 0;
         $amount = isset($_POST['amount']) ? (float)$_POST['amount'] : 0;
@@ -69,7 +78,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $formData = [
             'invoice_id' => $invoiceId ?: '',
-            'invoice_number' => $invoiceNumber,
             'client_id' => $clientId,
             'case_id' => $caseId,
             'amount' => $amount,
@@ -80,21 +88,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
 
         $previousStatus = null;
+        $invoiceNumber = $invoiceId ? '' : getNextInvoiceNumber($pdo);
         if ($invoiceId) {
             try {
-                $stmt = $pdo->prepare("SELECT status FROM invoices WHERE id = ?");
+                $stmt = $pdo->prepare("SELECT status, invoice_number FROM invoices WHERE id = ?");
                 $stmt->execute([$invoiceId]);
-                $previousStatus = $stmt->fetchColumn();
+                $existingInvoice = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($existingInvoice) {
+                    $previousStatus = $existingInvoice['status'];
+                    $invoiceNumber = $existingInvoice['invoice_number'];
+                }
             } catch (PDOException $e) {
                 // ignore, fall back to default behavior
             }
         }
 
-        if (empty($invoiceNumber) || empty($clientId) || $amount <= 0 || empty($issueDate)) {
-            $message = 'Invoice number, client, issue date, and a positive amount are required.';
+        $formData['invoice_number'] = $invoiceNumber;
+
+        if (empty($clientId) || $amount <= 0 || empty($issueDate)) {
+            $message = 'Client, issue date, and a positive amount are required.';
             $messageType = 'danger';
         } elseif (!isset($statusOptions[$status])) {
             $message = 'Invalid status selected.';
+            $messageType = 'danger';
+        } elseif ($invoiceId && empty($invoiceNumber)) {
+            $message = 'Invoice not found.';
             $messageType = 'danger';
         } else {
             try {
@@ -102,12 +120,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($invoiceId) {
                     $stmt = $pdo->prepare("
                         UPDATE invoices 
-                        SET invoice_number = ?, client_id = ?, case_id = ?, amount = ?, status = ?, issue_date = ?, due_date = ?, notes = ?
+                        SET client_id = ?, case_id = ?, amount = ?, status = ?, issue_date = ?, due_date = ?, notes = ?
                         WHERE id = ?
                     ");
-                    $stmt->execute([$invoiceNumber, $clientId, $caseId ?: null, $amount, $status, $issueDate ?: null, $dueDate ?: null, $notes, $invoiceId]);
+                    $stmt->execute([$clientId, $caseId ?: null, $amount, $status, $issueDate ?: null, $dueDate ?: null, $notes, $invoiceId]);
                     $msg = 'Invoice updated successfully.';
                 } else {
+                    $invoiceNumber = getNextInvoiceNumber($pdo);
                     $stmt = $pdo->prepare("
                         INSERT INTO invoices (invoice_number, client_id, case_id, amount, status, issue_date, due_date, notes)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -327,6 +346,10 @@ if (!empty($message)) {
 
 $formTitle = $formData['invoice_id'] ? 'Edit Invoice' : 'Create Invoice';
 $formButtonLabel = $formData['invoice_id'] ? 'Update Invoice' : 'Create Invoice';
+$invoiceNumberHint = $formData['invoice_id']
+    ? ''
+    : '<small class="text-muted">Assigned automatically when you save.</small>';
+$invoiceNumberField = '<input type="text" class="form-control bg-light" value="' . htmlspecialchars($formData['invoice_number']) . '" readonly tabindex="-1">' . $invoiceNumberHint;
 
 $html = <<<'HTML'
 <!DOCTYPE html>
@@ -362,8 +385,8 @@ $html = <<<'HTML'
         <div class="container-fluid py-4">
             {MESSAGE}
             <div class="row">
-                <div class="col-lg-5">
-                    <div class="card h-100">
+                <div class="col-12">
+                    <div class="card">
                         <div class="card-header pb-0">
                             <h6 class="mb-0">{FORM_TITLE}</h6>
                             <p class="text-sm text-muted mb-0">Generate clean invoices with linked cases and clients.</p>
@@ -374,7 +397,7 @@ $html = <<<'HTML'
                                 <input type="hidden" name="invoice_id" value="{FORM_INVOICE_ID}">
                                 <div class="mb-3">
                                     <label class="form-label">Invoice Number</label>
-                                    <input type="text" class="form-control" name="invoice_number" value="{FORM_INVOICE_NUMBER}" required>
+                                    {INVOICE_NUMBER_FIELD}
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Client</label>
@@ -419,8 +442,8 @@ $html = <<<'HTML'
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-7 mt-4 mt-lg-0">
-                    <div class="card h-100">
+                <div class="col-12 mt-4">
+                    <div class="card">
                         <div class="card-header pb-0">
                             <h6 class="mb-0">Invoice List</h6>
                         </div>
@@ -473,7 +496,7 @@ $html = str_replace('{MESSAGE}', $messageHtml, $html);
 $html = str_replace('{FORM_TITLE}', htmlspecialchars($formTitle), $html);
 $html = str_replace('{FORM_BUTTON}', htmlspecialchars($formButtonLabel), $html);
 $html = str_replace('{FORM_INVOICE_ID}', htmlspecialchars($formData['invoice_id']), $html);
-$html = str_replace('{FORM_INVOICE_NUMBER}', htmlspecialchars($formData['invoice_number']), $html);
+$html = str_replace('{INVOICE_NUMBER_FIELD}', $invoiceNumberField, $html);
 $html = str_replace('{CLIENT_OPTIONS}', $clientOptions, $html);
 $html = str_replace('{CASE_OPTIONS}', $caseOptions, $html);
 $html = str_replace('{FORM_AMOUNT}', htmlspecialchars($formData['amount']), $html);
