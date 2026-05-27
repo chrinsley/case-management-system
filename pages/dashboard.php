@@ -174,6 +174,93 @@ try {
     $calendarEvents = [];
 }
 
+// Today at a glance metrics
+$appointmentsToday = 0;
+$appointmentsThisWeek = 0;
+$unpaidInvoices = 0;
+$adminDisplayName = isset($_SESSION['admin_username']) ? $_SESSION['admin_username'] : 'Admin';
+$welcomeDate = date('l, j F Y');
+
+try {
+    $stmt = $pdo->query("SELECT COUNT(*) AS total FROM appointments WHERE DATE(starts_at) = CURDATE()");
+    $appointmentsToday = (int)$stmt->fetch()['total'];
+
+    $stmt = $pdo->query("
+        SELECT COUNT(*) AS total FROM appointments
+        WHERE starts_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)
+        AND starts_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)
+    ");
+    $appointmentsThisWeek = (int)$stmt->fetch()['total'];
+
+    $stmt = $pdo->query("
+        SELECT COUNT(*) AS total FROM invoices
+        WHERE status IS NULL OR LOWER(status) NOT IN ('paid', 'cancelled')
+    ");
+    $unpaidInvoices = (int)$stmt->fetch()['total'];
+} catch (PDOException $e) {
+    // keep defaults
+}
+
+// Upcoming appointments (sidebar)
+$upcomingAppointments = [];
+try {
+    $upStmt = $pdo->query("
+        SELECT
+            a.id,
+            a.starts_at,
+            a.status,
+            CONCAT('C-', LPAD(cs.id, 4, '0'), ' · ', cs.title) AS case_display,
+            TRIM(CONCAT(cl.first_name, ' ', cl.last_name)) AS client_name
+        FROM appointments a
+        LEFT JOIN cases cs ON cs.id = a.case_id
+        LEFT JOIN clients cl ON cl.id = cs.client_id
+        WHERE a.starts_at >= NOW()
+        ORDER BY a.starts_at ASC
+        LIMIT 7
+    ");
+    $upcomingAppointments = $upStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $upcomingAppointments = [];
+}
+
+// Financial chart — last 6 months invoiced vs paid
+$chartLabels = [];
+$chartInvoiced = [];
+$chartPaid = [];
+for ($i = 5; $i >= 0; $i--) {
+    $monthStart = date('Y-m-01', strtotime("-$i months"));
+    $monthKey = date('Y-m', strtotime($monthStart));
+    $chartLabels[] = date('M Y', strtotime($monthStart));
+
+    $inv = 0;
+    $paid = 0;
+    try {
+        $stmt = $pdo->prepare("
+            SELECT COALESCE(SUM(amount), 0) AS total FROM invoices
+            WHERE DATE_FORMAT(COALESCE(issue_date, created_at), '%Y-%m') = ?
+        ");
+        $stmt->execute([$monthKey]);
+        $inv = (float)$stmt->fetch()['total'];
+
+        $stmt = $pdo->prepare("
+            SELECT COALESCE(SUM(amount), 0) AS total FROM payments
+            WHERE DATE_FORMAT(COALESCE(payment_date, created_at), '%Y-%m') = ?
+        ");
+        $stmt->execute([$monthKey]);
+        $paid = (float)$stmt->fetch()['total'];
+    } catch (PDOException $e) {
+        // zeros
+    }
+    $chartInvoiced[] = round($inv, 2);
+    $chartPaid[] = round($paid, 2);
+}
+
+$chartInvoicedTotal = array_sum($chartInvoiced);
+$chartPaidTotal = array_sum($chartPaid);
+$chartTrendLabel = $chartPaidTotal >= $chartInvoicedTotal * 0.8
+    ? 'Strong collection rate'
+    : 'Track outstanding invoices';
+
 $html = <<<'HTML'
 <!DOCTYPE html>
 <html lang="en">
@@ -189,127 +276,8 @@ $html = <<<'HTML'
     <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
     <link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
     <link href="../assets/css/app-font-montserrat.css?v=1" rel="stylesheet" />
+    <link href="../assets/css/dashboard-enhancements.css?v=1" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
-    <style>
-        #dashboardCalendar {
-            font-family: 'Montserrat', sans-serif;
-            color: #2c3e50;
-        }
-        #dashboardCalendar .fc .fc-toolbar.fc-header-toolbar {
-            background-image: linear-gradient(310deg, #5e72e4 0%, #825ee4 100%);
-            border-radius: 0.5rem;
-            padding: 0.65rem 1rem;
-            margin-bottom: 1rem !important;
-        }
-        #dashboardCalendar .fc .fc-toolbar-title {
-            font-size: 1.2rem !important;
-            font-weight: 700;
-            color: #fff !important;
-        }
-        #dashboardCalendar .fc .fc-prev-button,
-        #dashboardCalendar .fc .fc-next-button {
-            background: rgba(255, 255, 255, 0.2) !important;
-            background-image: none !important;
-            border: 1px solid rgba(255, 255, 255, 0.65) !important;
-            color: #fff !important;
-            box-shadow: none !important;
-        }
-        #dashboardCalendar .fc .fc-prev-button:hover,
-        #dashboardCalendar .fc .fc-next-button:hover,
-        #dashboardCalendar .fc .fc-prev-button:focus,
-        #dashboardCalendar .fc .fc-next-button:focus {
-            background: rgba(255, 255, 255, 0.32) !important;
-            border-color: #fff !important;
-            color: #fff !important;
-            box-shadow: none !important;
-        }
-        #dashboardCalendar .fc .fc-prev-button .fc-icon,
-        #dashboardCalendar .fc .fc-next-button .fc-icon {
-            color: #fff !important;
-        }
-        #dashboardCalendar .fc .fc-button-primary {
-            background: rgba(255, 255, 255, 0.12) !important;
-            background-image: none !important;
-            border: 1px solid rgba(255, 255, 255, 0.45) !important;
-            color: rgba(255, 255, 255, 0.92) !important;
-            text-transform: capitalize;
-            font-size: 0.85rem;
-            font-weight: 600;
-            border-radius: 0.5rem !important;
-            padding: 0.5rem 1rem;
-            box-shadow: none !important;
-            opacity: 1 !important;
-        }
-        #dashboardCalendar .fc .fc-button-group {
-            display: inline-flex !important;
-            align-items: center;
-            gap: 0.5rem;
-            vertical-align: middle;
-        }
-        #dashboardCalendar .fc .fc-toolbar-chunk {
-            display: flex !important;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-        #dashboardCalendar .fc .fc-button-group > .fc-button {
-            margin-left: 0 !important;
-            margin-right: 0 !important;
-            border-radius: 0.5rem !important;
-        }
-        #dashboardCalendar .fc .fc-button-primary:hover,
-        #dashboardCalendar .fc .fc-button-primary:focus {
-            background: rgba(255, 255, 255, 0.22) !important;
-            border-color: rgba(255, 255, 255, 0.7) !important;
-            color: #fff !important;
-            box-shadow: none !important;
-            opacity: 1 !important;
-        }
-        #dashboardCalendar .fc .fc-button-primary.fc-button-active,
-        #dashboardCalendar .fc .fc-button-active {
-            background: rgba(255, 255, 255, 0.3) !important;
-            background-image: none !important;
-            border-color: #fff !important;
-            color: #fff !important;
-        }
-        #dashboardCalendar .fc .fc-button-primary:disabled {
-            color: rgba(255, 255, 255, 0.55) !important;
-        }
-        #dashboardCalendar .fc .fc-today-button,
-        #dashboardCalendar .fc .fc-today-button:disabled {
-            color: #fff !important;
-            opacity: 1 !important;
-        }
-        .fc-event {
-            cursor: pointer;
-            padding: 3px 6px;
-            border-left-width: 4px !important;
-            border-top: none !important;
-            border-right: none !important;
-            border-bottom: none !important;
-            font-weight: 600;
-            font-size: 0.8rem;
-            border-radius: 4px;
-            color: #344767 !important;
-        }
-        #dashboardCalendar {
-            min-height: 520px;
-        }
-        .calendar-legend span {
-            display: inline-flex;
-            align-items: center;
-            font-size: 0.75rem;
-            margin-right: 1rem;
-            color: #67748e;
-        }
-        .calendar-legend i {
-            width: 12px;
-            height: 12px;
-            border-radius: 3px;
-            margin-right: 0.35rem;
-            display: inline-block;
-        }
-    </style>
 </head>
 <body class="g-sidenav-show bg-gray-100 legalpro-admin-portal">
     <div class="min-height-300 bg-legalpro-admin position-absolute w-100"></div>
@@ -317,22 +285,62 @@ $html = <<<'HTML'
     </aside>
     <main class="main-content position-relative border-radius-lg ">
         <nav class="navbar navbar-main navbar-expand-lg px-0 mx-4 shadow-none border-radius-xl" id="navbarBlur" data-scroll="false">
-            <div class="container-fluid py-1 px-3">
+            <div class="container-fluid py-1 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb bg-transparent mb-0 pb-0 pt-1 px-0 me-sm-6 me-5">
                         <li class="breadcrumb-item text-sm"><a class="opacity-5 text-white" href="javascript:;">Pages</a></li>
                         <li class="breadcrumb-item text-sm text-white active" aria-current="page">Dashboard</li>
                     </ol>
                     <h6 class="font-weight-bolder text-white mb-0">Dashboard</h6>
+                    <p class="dashboard-welcome-sub text-white mb-0 mt-1">Welcome back, {ADMIN_NAME} · {WELCOME_DATE}</p>
                 </nav>
+                <div class="dashboard-quick-actions ms-auto d-none d-md-flex">
+                    <a href="case-new.php" class="btn btn-sm btn-white text-primary mb-0">+ New Case</a>
+                    <a href="appointments.php" class="btn btn-sm btn-outline-white mb-0">Appointments</a>
+                    <a href="clients.php" class="btn btn-sm btn-outline-white mb-0">Clients</a>
+                </div>
             </div>
         </nav>
-       
+
         <div class="container-fluid py-4">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="dashboard-glance">
+                        <a href="appointments.php" class="dashboard-glance__item">
+                            <div class="dashboard-glance__icon dashboard-glance__icon--primary"><i class="ni ni-time-alarm"></i></div>
+                            <div>
+                                <div class="dashboard-glance__value">{APPOINTMENTS_TODAY}</div>
+                                <div class="dashboard-glance__label">Today</div>
+                            </div>
+                        </a>
+                        <a href="appointments.php" class="dashboard-glance__item">
+                            <div class="dashboard-glance__icon dashboard-glance__icon--info"><i class="ni ni-calendar-grid-58"></i></div>
+                            <div>
+                                <div class="dashboard-glance__value">{APPOINTMENTS_WEEK}</div>
+                                <div class="dashboard-glance__label">This week</div>
+                            </div>
+                        </a>
+                        <a href="appointments.php" class="dashboard-glance__item">
+                            <div class="dashboard-glance__icon dashboard-glance__icon--warning"><i class="ni ni-bell-55"></i></div>
+                            <div>
+                                <div class="dashboard-glance__value">{DUE_TODAY}</div>
+                                <div class="dashboard-glance__label">Pending today</div>
+                            </div>
+                        </a>
+                        <a href="invoices.php" class="dashboard-glance__item">
+                            <div class="dashboard-glance__icon dashboard-glance__icon--success"><i class="ni ni-credit-card"></i></div>
+                            <div>
+                                <div class="dashboard-glance__value">{UNPAID_INVOICES}</div>
+                                <div class="dashboard-glance__label">Open invoices</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
             <div class="row">
                 <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
                     <a href="tables.php" style="text-decoration: none; color: inherit;">
-                        <div class="card" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div class="card dashboard-stat-card">
                             <div class="card-body p-3">
                                 <div class="row">
                                     <div class="col-8">
@@ -357,7 +365,7 @@ $html = <<<'HTML'
                 </div>
                 <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
                     <a href="tables.php" style="text-decoration: none; color: inherit;">
-                        <div class="card" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div class="card dashboard-stat-card">
                             <div class="card-body p-3">
                                 <div class="row">
                                     <div class="col-8">
@@ -381,7 +389,7 @@ $html = <<<'HTML'
                 </div>
                 <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
                     <a href="tables.php" style="text-decoration: none; color: inherit;">
-                        <div class="card" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div class="card dashboard-stat-card">
                             <div class="card-body p-3">
                                 <div class="row">
                                     <div class="col-8">
@@ -406,7 +414,7 @@ $html = <<<'HTML'
                 </div>
                 <div class="col-xl-3 col-sm-6">
                     <a href="appointments.php" style="text-decoration: none; color: inherit;">
-                        <div class="card" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div class="card dashboard-stat-card">
                             <div class="card-body p-3">
                                 <div class="row">
                                     <div class="col-8">
@@ -435,9 +443,8 @@ $html = <<<'HTML'
                     <div class="card z-index-2 h-100">
                         <div class="card-header pb-0 pt-3 bg-transparent">
                             <h6 class="text-capitalize">Financial Overview</h6>
-                            <p class="text-sm mb-0">
-                                <i class="fa fa-arrow-up text-success"></i>
-                                <span class="font-weight-bold">Net positive</span> trend this quarter
+                            <p class="text-sm mb-0 text-muted">
+                                <span class="font-weight-bold text-dark">{CHART_TREND_LABEL}</span> · last 6 months
                             </p>
                         </div>
                         <div class="card-body p-3">
@@ -462,20 +469,35 @@ $html = <<<'HTML'
 
             <div class="row mt-4">
                 <div class="col-12">
-                    <div class="card p-4 border-0 shadow-sm" style="border-radius: 1rem; background: #ffffff;">
-                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
-                            <div>
-                                <h6 class="text-capitalize mb-0 font-weight-bold" style="color: #344767;">Appointments Calendar</h6>
-                                <p class="text-sm mb-0 text-muted">All scheduled appointments from your database — click an event for details</p>
-                                <div class="calendar-legend mt-2">
-                                    <span><i style="background:#fff3cd;border-left:3px solid #fb6340;"></i> Pending</span>
-                                    <span><i style="background:#d4edda;border-left:3px solid #2dce89;"></i> Accepted</span>
-                                    <span><i style="background:#f8d7da;border-left:3px solid #f5365c;"></i> Rejected</span>
+                    <div class="dashboard-calendar-hub">
+                        <div class="dashboard-calendar-hub__head">
+                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                                <div>
+                                    <h6 class="text-capitalize mb-0 font-weight-bold" style="color: #344767;">Appointments Calendar</h6>
+                                    <p class="text-sm mb-0 text-muted">Click an event or upcoming item for details</p>
+                                    <div class="dashboard-legend-pills">
+                                        <span class="dashboard-legend-pill dashboard-legend-pill--pending"><i></i> Pending</span>
+                                        <span class="dashboard-legend-pill dashboard-legend-pill--accepted"><i></i> Accepted</span>
+                                        <span class="dashboard-legend-pill dashboard-legend-pill--rejected"><i></i> Rejected</span>
+                                    </div>
                                 </div>
+                                <a href="appointments.php" class="btn btn-sm bg-gradient-primary mb-0">Manage appointments</a>
                             </div>
-                            <a href="appointments.php" class="btn btn-sm bg-gradient-primary mb-0">Manage appointments</a>
                         </div>
-                        <div id="dashboardCalendar"></div>
+                        <div class="dashboard-calendar-hub__body">
+                            <div class="dashboard-calendar-layout">
+                                <div id="dashboardCalendar"></div>
+                                <aside class="dashboard-upcoming-panel">
+                                    <div class="dashboard-upcoming-panel__title">
+                                        <span>Upcoming</span>
+                                        <a href="appointments.php" class="text-xs text-primary font-weight-bold">View all</a>
+                                    </div>
+                                    <div class="dashboard-upcoming-list" id="upcomingAppointmentsList">
+                                        {UPCOMING_APPOINTMENTS_HTML}
+                                    </div>
+                                </aside>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -539,21 +561,33 @@ $html = <<<'HTML'
         gradientStroke1.addColorStop(1, 'rgba(94, 114, 228, 0.2)');
         gradientStroke1.addColorStop(0.2, 'rgba(94, 114, 228, 0.0)');
         gradientStroke1.addColorStop(0, 'rgba(94, 114, 228, 0)');
+        var gradientStroke2 = ctx1.createLinearGradient(0, 230, 0, 50);
+        gradientStroke2.addColorStop(1, 'rgba(45, 206, 137, 0.2)');
+        gradientStroke2.addColorStop(0, 'rgba(45, 206, 137, 0)');
         new Chart(ctx1, {
             type: "line",
             data: {
-                labels: ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+                labels: {CHART_LABELS_JSON},
                 datasets: [{
-                    label: "Mobile apps",
+                    label: "Invoiced",
                     tension: 0.4,
-                    borderWidth: 0,
-                    pointRadius: 0,
+                    pointRadius: 3,
+                    pointBackgroundColor: "#5e72e4",
                     borderColor: "#5e72e4",
                     backgroundColor: gradientStroke1,
-                    borderWidth: 3,
+                    borderWidth: 2,
                     fill: true,
-                    data: [50, 40, 300, 220, 500, 250, 400, 230, 500],
-                    maxBarThickness: 6
+                    data: {CHART_INVOICED_JSON}
+                }, {
+                    label: "Paid",
+                    tension: 0.4,
+                    pointRadius: 3,
+                    pointBackgroundColor: "#2dce89",
+                    borderColor: "#2dce89",
+                    backgroundColor: gradientStroke2,
+                    borderWidth: 2,
+                    fill: true,
+                    data: {CHART_PAID_JSON}
                 }],
             },
             options: {
@@ -561,7 +595,12 @@ $html = <<<'HTML'
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: false,
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            color: '#67748e',
+                            font: { family: 'Montserrat', size: 11 }
+                        }
                     }
                 },
                 interaction: {
@@ -580,7 +619,7 @@ $html = <<<'HTML'
                         ticks: {
                             display: true,
                             padding: 10,
-                            color: '#fbfbfb',
+                            color: '#8392ab',
                             font: {
                                 size: 11,
                                 family: "Montserrat",
@@ -629,12 +668,48 @@ $html = <<<'HTML'
                 return day + '/' + month + '/' + year + ' at ' + hours + ':' + minutes;
             }
 
+            function openAppointmentModal(eventLike) {
+                var props = eventLike.extendedProps || {};
+                document.getElementById('modalTitle').innerText = eventLike.title || 'Appointment';
+                document.getElementById('modalClient').innerText = props.client || '—';
+                document.getElementById('modalLawyer').innerText = props.lawyer || '—';
+                document.getElementById('modalStatus').innerText = props.status || 'Pending';
+                document.getElementById('modalNotes').innerText = props.notes || 'No notes added.';
+                var start = eventLike.start instanceof Date ? eventLike.start : new Date(eventLike.start);
+                var timeText = formatDateTime(start);
+                if (eventLike.end) {
+                    var end = eventLike.end instanceof Date ? eventLike.end : new Date(eventLike.end);
+                    timeText += ' — ' + formatDateTime(end);
+                }
+                document.getElementById('modalTime').innerText = timeText;
+                var editId = props.appointmentId || eventLike.id;
+                document.getElementById('modalEditLink').href = 'appointments.php?id=' + editId + '#appointment-form';
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('appointmentModal')).show();
+            }
+
+            document.getElementById('upcomingAppointmentsList').addEventListener('click', function(e) {
+                var btn = e.target.closest('[data-appointment-id]');
+                if (!btn) return;
+                var id = btn.getAttribute('data-appointment-id');
+                var match = appointmentEvents.find(function(ev) { return String(ev.id) === String(id); });
+                if (match) {
+                    openAppointmentModal({
+                        title: match.title,
+                        start: match.start,
+                        end: match.end,
+                        id: match.id,
+                        extendedProps: match.extendedProps
+                    });
+                }
+            });
+
             var calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
+                initialView: window.innerWidth < 768 ? 'listWeek' : 'dayGridMonth',
                 height: 'auto',
                 firstDay: 1,
                 navLinks: true,
                 nowIndicator: true,
+                buttonText: { today: 'Today', month: 'Month', week: 'Week', list: 'List' },
                 eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
                 headerToolbar: {
                     left: 'prev,next today',
@@ -644,24 +719,7 @@ $html = <<<'HTML'
                 events: appointmentEvents,
                 eventClick: function(info) {
                     info.jsEvent.preventDefault();
-                    var props = info.event.extendedProps || {};
-
-                    document.getElementById('modalTitle').innerText = info.event.title;
-                    document.getElementById('modalClient').innerText = props.client || '—';
-                    document.getElementById('modalLawyer').innerText = props.lawyer || '—';
-                    document.getElementById('modalStatus').innerText = props.status || 'Pending';
-                    document.getElementById('modalNotes').innerText = props.notes || 'No notes added.';
-
-                    var timeText = formatDateTime(info.event.start);
-                    if (info.event.end) {
-                        timeText += ' — ' + formatDateTime(info.event.end);
-                    }
-                    document.getElementById('modalTime').innerText = timeText;
-
-                    var editId = props.appointmentId || info.event.id;
-                    document.getElementById('modalEditLink').href = 'appointments.php?id=' + editId + '#appointment-form';
-
-                    bootstrap.Modal.getOrCreateInstance(document.getElementById('appointmentModal')).show();
+                    openAppointmentModal(info.event);
                 },
                 eventDidMount: function(info) {
                     var tip = info.event.title;
@@ -708,8 +766,8 @@ if (empty($recentCases)) {
         $createdDate = isset($case['created_at']) && $case['created_at'] ? date('M d, Y', strtotime($case['created_at'])) : 'N/A';
         
         $recentCasesList .= '
-        <a href="tables.php?case_id=' . $caseId . '" style="text-decoration: none; color: inherit;">
-            <div class="list-group-item border-0 d-flex justify-content-between align-items-center ps-0 mb-2 border-radius-lg" style="cursor: pointer;">
+        <a href="case-view.php?id=' . $caseId . '" style="text-decoration: none; color: inherit;">
+            <div class="dashboard-recent-item d-flex justify-content-between align-items-center mb-2">
                 <div class="d-flex flex-column">
                     <h6 class="mb-1 text-dark text-sm">' . $caseNumber . ' · ' . $title . '</h6>
                     <span class="text-xs">' . htmlspecialchars($clientName) . ' · ' . $createdDate . '</span>
@@ -720,7 +778,39 @@ if (empty($recentCases)) {
     }
 }
 
+// Upcoming appointments sidebar HTML
+$upcomingAppointmentsHtml = '';
+if (empty($upcomingAppointments)) {
+    $upcomingAppointmentsHtml = '<div class="dashboard-upcoming-empty"><i class="ni ni-calendar-grid-58"></i>No upcoming appointments</div>';
+} else {
+    foreach ($upcomingAppointments as $up) {
+        $status = isset($up['status']) ? strtolower($up['status']) : 'pending';
+        $timeLabel = date('M j', strtotime($up['starts_at']));
+        $hourLabel = date('g:i A', strtotime($up['starts_at']));
+        $title = !empty($up['case_display']) ? htmlspecialchars($up['case_display']) : 'Appointment';
+        $client = !empty($up['client_name']) ? htmlspecialchars($up['client_name']) : '—';
+        $upcomingAppointmentsHtml .= '
+        <button type="button" class="dashboard-upcoming-item dashboard-upcoming-item--' . htmlspecialchars($status) . '" data-appointment-id="' . (int)$up['id'] . '">
+            <span class="dashboard-upcoming-item__time">' . htmlspecialchars($hourLabel) . '<br><small style="font-weight:500;opacity:.8">' . htmlspecialchars($timeLabel) . '</small></span>
+            <span class="flex-grow-1">
+                <p class="dashboard-upcoming-item__title">' . $title . '</p>
+                <p class="dashboard-upcoming-item__sub">' . $client . '</p>
+            </span>
+        </button>';
+    }
+}
+
 // Replace placeholders
+$html = str_replace('{ADMIN_NAME}', htmlspecialchars($adminDisplayName), $html);
+$html = str_replace('{WELCOME_DATE}', htmlspecialchars($welcomeDate), $html);
+$html = str_replace('{APPOINTMENTS_TODAY}', $appointmentsToday, $html);
+$html = str_replace('{APPOINTMENTS_WEEK}', $appointmentsThisWeek, $html);
+$html = str_replace('{UNPAID_INVOICES}', $unpaidInvoices, $html);
+$html = str_replace('{CHART_TREND_LABEL}', htmlspecialchars($chartTrendLabel), $html);
+$html = str_replace('{CHART_LABELS_JSON}', json_encode($chartLabels), $html);
+$html = str_replace('{CHART_INVOICED_JSON}', json_encode($chartInvoiced), $html);
+$html = str_replace('{CHART_PAID_JSON}', json_encode($chartPaid), $html);
+$html = str_replace('{UPCOMING_APPOINTMENTS_HTML}', $upcomingAppointmentsHtml, $html);
 $html = str_replace('{TOTAL_CASES}', $totalCases, $html);
 $html = str_replace('{ACTIVE_CASES}', $activeCases, $html);
 $html = str_replace('{COMPLETED_CASES}', $completedCases, $html);
