@@ -129,4 +129,34 @@ function formatCurrency($amount, $decimals = 2) {
         : $formattedAmount . ' ' . $config['symbol'];
 }
 
+function getOfferedServices() {
+    $raw = getSetting('offered_services', null);
+    if ($raw === null || $raw === '') {
+        return [];
+    }
+    $decoded = json_decode($raw, true);
+    if (!is_array($decoded)) {
+        return [];
+    }
+    $services = [];
+    foreach ($decoded as $name) {
+        $name = trim((string) $name);
+        if ($name !== '') {
+            $services[] = $name;
+        }
+    }
+    return $services;
+}
+
+function setOfferedServices(array $services) {
+    $normalized = [];
+    foreach ($services as $name) {
+        $name = trim((string) $name);
+        if ($name !== '' && !in_array($name, $normalized, true)) {
+            $normalized[] = $name;
+        }
+    }
+    setSetting('offered_services', json_encode($normalized, JSON_UNESCAPED_UNICODE));
+}
+
 ?>
