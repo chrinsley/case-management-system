@@ -840,7 +840,7 @@ include __DIR__ . '/../inc/footer.php';
 $footer = ob_get_clean();
 
 // insert footer before closing </body>
-$html = preg_replace('/<\/body>\s*<\/html>$/i', $footer . "\n</body>\n</html>", $html);
+$html = preg_replace('/<\/body>\s*<\/html>$/i', $footer, $html);
 
 echo $html;
 ?>
