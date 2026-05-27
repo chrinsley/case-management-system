@@ -298,12 +298,34 @@
     color: #fff !important;
 }
 
-/* Prev/next, Today, Month/Week/List — white on purple (after FullCalendar CSS) */
-#dashboardCalendar .fc .fc-toolbar.fc-header-toolbar .fc-button {
-    background-color: #5e72e4 !important;
-    background-image: linear-gradient(310deg, #5e72e4 0%, #825ee4 100%) !important;
-    border-color: #5e72e4 !important;
+#dashboardCalendar .fc .fc-prev-button,
+#dashboardCalendar .fc .fc-next-button {
+    background: rgba(255, 255, 255, 0.2) !important;
+    background-image: none !important;
+    border: 1px solid rgba(255, 255, 255, 0.65) !important;
     color: #fff !important;
+    box-shadow: none !important;
+}
+
+#dashboardCalendar .fc .fc-prev-button:hover,
+#dashboardCalendar .fc .fc-next-button:hover,
+#dashboardCalendar .fc .fc-prev-button:focus,
+#dashboardCalendar .fc .fc-next-button:focus {
+    background: rgba(255, 255, 255, 0.32) !important;
+    border-color: #fff !important;
+    color: #fff !important;
+}
+
+#dashboardCalendar .fc .fc-prev-button .fc-icon,
+#dashboardCalendar .fc .fc-next-button .fc-icon {
+    color: #fff !important;
+}
+
+#dashboardCalendar .fc .fc-button-primary {
+    background: rgba(255, 255, 255, 0.12) !important;
+    background-image: none !important;
+    border: 1px solid rgba(255, 255, 255, 0.45) !important;
+    color: rgba(255, 255, 255, 0.92) !important;
     text-transform: capitalize;
     font-size: 0.85rem;
     font-weight: 600;
@@ -311,36 +333,6 @@
     padding: 0.5rem 1rem;
     box-shadow: none !important;
     opacity: 1 !important;
-}
-
-#dashboardCalendar .fc .fc-toolbar.fc-header-toolbar .fc-button:hover,
-#dashboardCalendar .fc .fc-toolbar.fc-header-toolbar .fc-button:focus,
-#dashboardCalendar .fc .fc-toolbar.fc-header-toolbar .fc-button:active {
-    background-color: #324cdd !important;
-    background-image: none !important;
-    border-color: #324cdd !important;
-    color: #fff !important;
-    box-shadow: none !important;
-}
-
-#dashboardCalendar .fc .fc-toolbar.fc-header-toolbar .fc-button:disabled {
-    color: rgba(255, 255, 255, 0.65) !important;
-    opacity: 0.55 !important;
-}
-
-#dashboardCalendar .fc .fc-toolbar.fc-header-toolbar .fc-button-primary:not(:disabled).fc-button-active,
-#dashboardCalendar .fc .fc-toolbar.fc-header-toolbar .fc-button-primary:not(:disabled):active,
-#dashboardCalendar .fc .fc-toolbar.fc-header-toolbar .fc-button.fc-button-active {
-    background-color: #324cdd !important;
-    background-image: none !important;
-    border-color: #fff !important;
-    color: #fff !important;
-}
-
-#dashboardCalendar .fc .fc-toolbar.fc-header-toolbar .fc-icon,
-#dashboardCalendar .fc .fc-toolbar.fc-header-toolbar .fc-icon-chevron-left,
-#dashboardCalendar .fc .fc-toolbar.fc-header-toolbar .fc-icon-chevron-right {
-    color: #fff !important;
 }
 
 #dashboardCalendar .fc .fc-button-group {
@@ -361,6 +353,26 @@
     margin-left: 0 !important;
     margin-right: 0 !important;
     border-radius: 0.5rem !important;
+}
+
+#dashboardCalendar .fc .fc-button-primary:hover,
+#dashboardCalendar .fc .fc-button-primary:focus {
+    background: rgba(255, 255, 255, 0.22) !important;
+    border-color: rgba(255, 255, 255, 0.7) !important;
+    color: #fff !important;
+}
+
+#dashboardCalendar .fc .fc-button-primary.fc-button-active,
+#dashboardCalendar .fc .fc-button-active {
+    background: rgba(255, 255, 255, 0.3) !important;
+    border-color: #fff !important;
+    color: #fff !important;
+}
+
+#dashboardCalendar .fc .fc-today-button,
+#dashboardCalendar .fc .fc-today-button:disabled {
+    color: #fff !important;
+    opacity: 1 !important;
 }
 
 #dashboardCalendar .fc .fc-day-today {

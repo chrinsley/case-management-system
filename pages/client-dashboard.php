@@ -88,7 +88,7 @@ $html = <<<'HTML'
     <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
     <link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
 <link href="../assets/css/app-font-montserrat.css?v=4" rel="stylesheet" />
-<link href="../assets/css/legalpro-client-portal.css?v=1" rel="stylesheet" />
+<link href="../assets/css/legalpro-client-portal.css?v=8" rel="stylesheet" />
 
     <style>
         .client-dashboard-page { --cd-radius: 1rem; --cd-radius-lg: 1.25rem; }
@@ -439,6 +439,8 @@ if (empty($upcomingAppointments)) {
 }
 $html = str_replace('{UPCOMING_APPOINTMENTS}', $appointmentsHtml, $html);
 
+require_once __DIR__ . '/../inc/client-sidebar.php';
+$html = inject_client_sidebar($html);
 
 echo $html;
 ?>

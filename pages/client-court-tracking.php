@@ -116,7 +116,7 @@ if (!empty($_SESSION['error_message'])) {
     <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
     <link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
 <link href="../assets/css/app-font-montserrat.css?v=4" rel="stylesheet" />
-<link href="../assets/css/legalpro-client-portal.css?v=1" rel="stylesheet" />
+<link href="../assets/css/legalpro-client-portal.css?v=8" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/css/simple-calendar.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.10.1/main.min.css" />
     <style>

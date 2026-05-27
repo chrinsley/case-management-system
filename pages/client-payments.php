@@ -200,7 +200,7 @@ $html = <<<'HTML'
     <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
     <link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
 <link href="../assets/css/app-font-montserrat.css?v=4" rel="stylesheet" />
-<link href="../assets/css/legalpro-client-portal.css?v=1" rel="stylesheet" />
+<link href="../assets/css/legalpro-client-portal.css?v=8" rel="stylesheet" />
     <style>
         .client-payments-page { --cp-radius: 1.15rem; }
         .client-payments-page .cp-hero {
@@ -440,6 +440,9 @@ $html = str_replace('{PAYMENTS_ROWS}', $paymentsRows, $html);
 $html = str_replace('{INVOICE_COUNT}', (string) $invoiceCount, $html);
 $html = str_replace('{PAYMENT_COUNT}', (string) $paymentCount, $html);
 $html = str_replace('{OVERDUE_COUNT}', (string) $overdueInvoiceCount, $html);
+
+require_once __DIR__ . '/../inc/client-sidebar.php';
+$html = inject_client_sidebar($html);
 
 echo $html;
 ?>

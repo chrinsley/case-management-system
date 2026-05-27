@@ -138,7 +138,7 @@ $html = <<<'HTML'
     <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
     <link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
 <link href="../assets/css/app-font-montserrat.css?v=4" rel="stylesheet" />
-<link href="../assets/css/legalpro-client-portal.css?v=1" rel="stylesheet" />
+<link href="../assets/css/legalpro-client-portal.css?v=8" rel="stylesheet" />
     <style>
         .client-cases-page { --cc-radius: 1.15rem; }
         .client-cases-page .cc-hero {
@@ -333,5 +333,8 @@ $html = str_replace('{MESSAGE}', $messageHtml, $html);
 $html = str_replace('{CLIENT_NAME}', htmlspecialchars($client_name), $html);
 $html = str_replace('{CASE_COUNT}', (string) $caseCount, $html);
 $html = str_replace('{CASES_ROWS}', $casesRows, $html);
+
+require_once __DIR__ . '/../inc/client-sidebar.php';
+$html = inject_client_sidebar($html);
 
 echo $html;
