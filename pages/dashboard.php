@@ -7,7 +7,7 @@ if (!isset($_SESSION['admin_id'])) {
     header('Location: admin-login.php');
     exit;
 }
-lorem
+
 // Ensure cases table has all required columns
 try {
     $pdo->query("ALTER TABLE cases ADD COLUMN user_id INT NULL AFTER client_id");
@@ -300,7 +300,7 @@ $html = <<<'HTML'
                     <a href="clients.php" class="btn btn-sm btn-outline-white mb-0">Clients</a>
                 </div>
             </div>
-        </nav>
+        </nav>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Minus accusamus nobis maxime magnam id, eum esse quis modi commodi natus officiis dolorum? Officiis, quod tenetur! Magnam sunt quasi odit consectetur.
 
         <div class="container-fluid py-4">
             <div class="row mb-4">
