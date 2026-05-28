@@ -885,13 +885,6 @@ $html = <<<'HTML'
                                         <input class="form-control" type="text" name="title" value="{CASE_TITLE}" required>
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-control-label text-sm font-weight-bold">Assigned Lawyers</label>
-                                        <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
-                                            {LAWYER_CHECKBOXES}
-                                        </div>
-                                        <small class="text-muted">Select one or more lawyers to assign to this case</small>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
                                         <label class="form-control-label text-sm font-weight-bold">Status</label>
                                         <select class="form-control" name="status">
                                             <option value="open" {STATUS_OPEN}>Open</option>
@@ -920,6 +913,13 @@ $html = <<<'HTML'
                                         <label class="form-control-label text-sm font-weight-bold">Total Fees</label>
                                         <input class="form-control" type="text" value="{TOTAL_FEES}" readonly>
                                         <small class="text-muted">Auto-calculated from services</small>
+                                    </div>
+                                    <div class="col-12 mb-3">
+                                        <label class="form-control-label text-sm font-weight-bold">Assigned Lawyers</label>
+                                        <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                                            {LAWYER_CHECKBOXES}
+                                        </div>
+                                        <small class="text-muted">Select one or more lawyers to assign to this case</small>
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-control-label text-sm font-weight-bold">Start Date</label>

@@ -506,12 +506,6 @@ $html = <<<'HTML'
 												<a href="client-detail.php" class="btn btn-primary btn-sm mb-0">Add new client</a>
 											</div>
 										</div>
-										<div class="form-group">
-											<label class="form-control-label">Assigned Lawyers</label>
-											<div class="border rounded lawyer-picker">
-												{LAWYER_CHECKBOXES}
-											</div>
-										</div>
 									</div>
 									<div class="col-md-6">
 										<div class="form-group">
@@ -572,6 +566,12 @@ $html = <<<'HTML'
 											<label class="form-control-label">Expected Completion</label>
 											<input class="form-control" type="date" name="expected_completion" value="{EXPECTED_COMPLETION_VALUE}">
 										</div>
+									</div>
+								</div>
+								<div class="form-group">
+									<label class="form-control-label">Assigned Lawyers</label>
+									<div class="border rounded lawyer-picker">
+										{LAWYER_CHECKBOXES}
 									</div>
 								</div>
 								<div class="form-group">
