@@ -10,10 +10,24 @@ if (isset($_GET['msg']) && isset($_GET['type'])) {
 
 $currencyOptionsList = getCurrencyOptions();
 $currencyConfig = getCurrencyConfig();
+$companyBranding = getCompanyBranding();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $formType = isset($_POST['form_type']) ? $_POST['form_type'] : '';
-    if ($formType === 'currency') {
+    if ($formType === 'branding') {
+        $companyName = isset($_POST['company_name']) ? trim($_POST['company_name']) : '';
+        $companyDetails = isset($_POST['company_details']) ? trim($_POST['company_details']) : '';
+        $logoFile = isset($_FILES['company_logo']) ? $_FILES['company_logo'] : null;
+        $result = saveCompanyBranding($companyName, $companyDetails, $logoFile);
+
+        if (!$result['ok']) {
+            $message = $result['message'];
+            $messageType = 'danger';
+        } else {
+            header('Location: settings.php?msg=' . urlencode($result['message']) . '&type=success');
+            exit;
+        }
+    } elseif ($formType === 'currency') {
         $selectedCurrency = isset($_POST['currency']) ? strtoupper(trim($_POST['currency'])) : '';
         if (!isset($currencyOptionsList[$selectedCurrency])) {
             $message = 'Invalid currency selection.';
@@ -148,48 +162,36 @@ $html = <<<'HTML'
 							<h6>Branding</h6>
 						</div>
 						<div class="card-body">
-							<div class="row">
-								<div class="col-md-6">
-									<div class="form-group">
-										<label class="form-control-label">Company Name</label>
-										<input class="form-control" type="text" value="Argon Dashboard">
+							<form method="post" enctype="multipart/form-data">
+								<input type="hidden" name="form_type" value="branding">
+								<div class="row">
+									<div class="col-md-6">
+										<div class="form-group">
+											<label class="form-control-label">Company Name</label>
+											<input class="form-control" type="text" name="company_name" value="{COMPANY_NAME}" required>
+										</div>
+									</div>
+									<div class="col-md-6">
+										<div class="form-group">
+											<label class="form-control-label">Logo</label>
+											<input class="form-control" type="file" name="company_logo" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml">
+											<small class="text-muted">PNG, JPG, GIF, WEBP, or SVG. Max 2 MB.</small>
+										</div>
 									</div>
 								</div>
-								<div class="col-md-6">
-									<div class="form-group">
-										<label class="form-control-label">Logo</label>
-										<input class="form-control" type="file">
+								<div class="d-flex align-items-center gap-3 mb-3">
+									<img src="{COMPANY_LOGO_URL}" alt="Current company logo" style="width: 40px; height: 40px; object-fit: contain; border: 1px solid #e9ecef; border-radius: 0.5rem; padding: 0.25rem; background: #fff;">
+									<div>
+										<p class="text-sm mb-0 font-weight-bold">Current sidebar logo</p>
+										<p class="text-xs text-muted mb-0">This appears at the top of every portal sidebar after saving.</p>
 									</div>
 								</div>
-							</div>
-							<div class="row">
-								<div class="col-md-6">
-									<div class="form-group">
-										<label class="form-control-label">Color Theme</label>
-										<select class="form-control">
-											<option>Primary</option>
-											<option>Dark</option>
-											<option>Info</option>
-											<option>Success</option>
-											<option>Warning</option>
-											<option>Danger</option>
-										</select>
-									</div>
+								<div class="form-group">
+									<label class="form-control-label">Company Details</label>
+									<textarea class="form-control" rows="3" name="company_details" placeholder="Address, contact details...">{COMPANY_DETAILS}</textarea>
 								</div>
-								<div class="col-md-6">
-									<div class="form-group">
-										<label class="form-control-label">Font</label>
-										<select class="form-control">
-											<option>Montserrat</option>
-											<option>Roboto</option>
-										</select>
-									</div>
-								</div>
-							</div>
-							<div class="form-group">
-								<label class="form-control-label">Company Details</label>
-								<textarea class="form-control" rows="3" placeholder="Address, contact details..."></textarea>
-							</div>
+								<button type="submit" class="btn btn-dark">Save Branding</button>
+							</form>
                             <hr class="horizontal dark my-4">
                             <form method="post" class="mt-3">
                                 <input type="hidden" name="form_type" value="currency">
@@ -206,7 +208,6 @@ $html = <<<'HTML'
                                     </div>
                                 </div>
                             </form>
-							<button class="btn btn-dark mt-4">Save Changes</button>
 						</div>
 					</div>
 					<div class="card">
@@ -266,7 +267,7 @@ $html = <<<'HTML'
 					<div class="row align-items-center justify-content-lg-between">
 						<div class="col-lg-6 mb-lg-0 mb-4">
 							<div class="copyright text-center text-sm text-muted text-lg-start">
-								© <script>document.write(new Date().getFullYear())</script>, Argon Dashboard.
+								© <script>document.write(new Date().getFullYear())</script>, {COMPANY_NAME}.
 							</div>
 						</div>
 					</div>
@@ -292,5 +293,8 @@ $html = preg_replace('/<\/body>\s*<\/html>$/i', $footer . "\n</body>\n</html>", 
 $html = str_replace('{MESSAGE}', $messageHtml, $html);
 $html = str_replace('{CURRENCY_OPTIONS}', $currencyOptionsHtml, $html);
 $html = str_replace('{SERVICES_LIST}', $servicesListHtml, $html);
+$html = str_replace('{COMPANY_NAME}', htmlspecialchars($companyBranding['name']), $html);
+$html = str_replace('{COMPANY_LOGO_URL}', htmlspecialchars($companyBranding['logo_url']), $html);
+$html = str_replace('{COMPANY_DETAILS}', htmlspecialchars($companyBranding['details']), $html);
 echo $html;
 ?>
