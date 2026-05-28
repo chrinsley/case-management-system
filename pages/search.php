@@ -206,9 +206,11 @@ if ($portal === 'admin') {
 }
 
 $portalTitle = $portal === 'client' ? 'Client' : ($portal === 'lawyer' ? 'Lawyer' : 'Admin');
-$stripClass = $portal === 'admin' ? 'bg-legalpro-admin' : ($portal === 'lawyer' ? 'bg-legalpro-lawyer' : 'bg-primary');
+$stripClass = $portal === 'admin' ? 'bg-legalpro-admin' : ($portal === 'lawyer' ? 'bg-legalpro-lawyer' : 'bg-legalpro-client');
 $bodyExtra = 'search-portal-page search-portal-page--' . $portal;
-if ($portal === 'lawyer') {
+if ($portal === 'client') {
+    $bodyExtra .= ' client-portal-page';
+} elseif ($portal === 'lawyer') {
     $bodyExtra .= ' legalpro-lawyer-portal';
 }
 $navBreadcrumbMuted = 'opacity-6 text-white';
@@ -217,6 +219,35 @@ $navUserClass = 'text-white';
 $navbarBlurAttr = $portal === 'client' ? 'navbar-scroll="true"' : 'data-scroll="false"';
 $caseCount = count($cases);
 $aptCount = count($appointments);
+
+$heroCardClass = $portal === 'client'
+    ? 'card search-hero cd-hero border-0 mb-4'
+    : 'card search-hero text-white mb-4';
+$heroKickerClass = $portal === 'client'
+    ? 'cd-hero-kicker mb-2'
+    : 'text-xs text-uppercase font-weight-bold mb-1';
+$heroKickerStyle = $portal === 'client' ? '' : ' style="letter-spacing: 0.12em; opacity: 0.85;"';
+$heroTitleClass = $portal === 'client'
+    ? 'cd-hero-title font-weight-bolder mb-2'
+    : 'text-white font-weight-bolder mb-2';
+$heroTextClass = $portal === 'client'
+    ? 'cd-hero-text text-sm mb-0'
+    : 'text-sm mb-0';
+$heroTextStyle = $portal === 'client' ? ' style="line-height: 1.55;"' : ' style="opacity: 0.88; line-height: 1.55;"';
+$heroLabelClass = $portal === 'client'
+    ? 'form-label text-xs text-muted mb-1 d-block'
+    : 'form-label text-white text-xs mb-1 d-block';
+$heroSubmitClass = $portal === 'client'
+    ? 'btn bg-gradient-primary btn-lg mb-0 px-4 font-weight-bold btn-search-submit text-white'
+    : 'btn btn-white btn-lg mb-0 px-4 font-weight-bold btn-search-submit';
+$resultsTitleClass = $portal === 'client'
+    ? 'font-weight-bolder text-white mb-1 mt-5'
+    : 'font-weight-bolder text-dark mb-1 mt-5';
+$resultsSummaryClass = $portal === 'client'
+    ? 'text-sm text-white mb-0'
+    : 'text-sm text-muted mb-0';
+$resultsSummaryStyle = $portal === 'client' ? ' style="opacity: 0.9;"' : '';
+$resultsQueryClass = $portal === 'client' ? 'text-white' : 'text-dark';
 
 ?>
 <!DOCTYPE html>
@@ -233,11 +264,10 @@ $aptCount = count($appointments);
     <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
     <link id="pagestyle" href="../assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
     <link href="../assets/css/app-font-montserrat.css?v=2" rel="stylesheet" />
+    <?php if ($portal === 'client'): ?>
+    <link href="../assets/css/legalpro-client-portal.css?v=8" rel="stylesheet" />
+    <?php endif; ?>
     <style>
-        .search-portal-page--client .min-height-300 {
-            background: linear-gradient(125deg, #5e72e4 0%, #324cdd 42%, #172b4d 100%) !important;
-            opacity: 1;
-        }
         .search-portal-page .navbar-main,
         .search-portal-page .navbar-main.blur,
         .search-portal-page #navbarBlur {
@@ -264,15 +294,35 @@ $aptCount = count($appointments);
         .search-portal-page .navbar-main .sidenav-toggler-line {
             background-color: #fff !important;
         }
-        .search-portal-page .search-hero {
+        .search-portal-page--lawyer .search-hero,
+        .search-portal-page--admin .search-hero {
             border-radius: 1.15rem;
-            background: linear-gradient(135deg, rgba(94, 114, 228, 0.96) 0%, rgba(50, 76, 221, 0.98) 50%, rgba(23, 43, 77, 1) 100%);
+            background: linear-gradient(135deg, rgba(94, 114, 228, 0.88) 0%, rgba(30, 42, 88, 0.95) 100%);
             box-shadow: 0 1rem 2.25rem rgba(23, 43, 77, 0.16);
             border: none;
         }
-        .search-portal-page--lawyer .search-hero,
-        .search-portal-page--admin .search-hero {
-            background: linear-gradient(135deg, rgba(94, 114, 228, 0.88) 0%, rgba(30, 42, 88, 0.95) 100%);
+        .search-portal-page--client .search-hero.cd-hero {
+            border-radius: 1.25rem;
+            background: #fff;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            box-shadow: 0 0.25rem 1rem rgba(52, 71, 103, 0.08);
+        }
+        .search-portal-page--client .search-hero .cd-hero-kicker {
+            letter-spacing: 0.12em;
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #5e72e4;
+        }
+        .search-portal-page--client .search-hero .cd-hero-title {
+            color: #344767;
+        }
+        .search-portal-page--client .search-hero .cd-hero-text {
+            color: #67748e;
+        }
+        .search-portal-page--client .search-hero-field {
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: none;
         }
         .search-portal-page .search-hero-query {
             display: flex;
@@ -393,23 +443,23 @@ $aptCount = count($appointments);
                 </div>
             <?php endif; ?>
 
-            <div class="card search-hero text-white mb-4">
-                <div class="card-body p-4 p-lg-4">
+            <div class="<?php echo h($heroCardClass); ?>">
+                <div class="card-body p-4 p-lg-5">
                     <div class="row align-items-center g-3">
                         <div class="col-lg-5">
-                            <p class="text-xs text-uppercase font-weight-bold mb-1" style="letter-spacing: 0.12em; opacity: 0.85;">LegalPro search</p>
-                            <h4 class="text-white font-weight-bolder mb-2">Find cases instantly</h4>
-                            <p class="text-sm mb-0" style="opacity: 0.88; line-height: 1.55;">Use a title, client name, category, status, or a case number like <strong>C-0001</strong>.</p>
+                            <p class="<?php echo h($heroKickerClass); ?>"<?php echo $heroKickerStyle; ?>>LegalPro search</p>
+                            <h4 class="<?php echo h($heroTitleClass); ?>">Find cases instantly</h4>
+                            <p class="<?php echo h($heroTextClass); ?>"<?php echo $heroTextStyle; ?>>Use a title, client name, category, status, or a case number like <strong>C-0001</strong>.</p>
                         </div>
                         <div class="col-lg-7">
                             <form method="get" action="search.php" class="mb-0" role="search">
-                                <label class="form-label text-white text-xs mb-1 d-block">Search query</label>
+                                <label class="<?php echo h($heroLabelClass); ?>">Search query</label>
                                 <div class="search-hero-query">
                                     <div class="input-group input-group-lg search-hero-field">
                                         <span class="input-group-text"><i class="fas fa-search" aria-hidden="true"></i></span>
                                         <input type="search" name="q" class="form-control" placeholder="Try a keyword or case number…" value="<?php echo $qDisp; ?>" autocomplete="off" maxlength="200" aria-label="Search">
                                     </div>
-                                    <button class="btn btn-white btn-lg mb-0 px-4 font-weight-bold btn-search-submit" type="submit">Search</button>
+                                    <button class="<?php echo h($heroSubmitClass); ?>" type="submit">Search</button>
                                 </div>
                             </form>
                         </div>
@@ -430,8 +480,8 @@ $aptCount = count($appointments);
             <?php else: ?>
                 <div class="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
                     <div>
-                        <h5 class="font-weight-bolder text-dark mb-1 mt-5">Results</h5>
-                        <p class="text-sm text-muted mb-0">Showing matches for <strong class="text-dark">“<?php echo $qDisp; ?>”</strong></p>
+                        <h5 class="<?php echo h($resultsTitleClass); ?>">Results</h5>
+                        <p class="<?php echo h($resultsSummaryClass); ?>"<?php echo $resultsSummaryStyle; ?>>Showing matches for <strong class="<?php echo h($resultsQueryClass); ?>">“<?php echo $qDisp; ?>”</strong></p>
                     </div>
                     <div class="d-flex gap-2">
                         <span class="badge rounded-pill bg-gradient-primary"><?php echo (int) $caseCount; ?> case<?php echo $caseCount === 1 ? '' : 's'; ?></span>
