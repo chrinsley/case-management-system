@@ -430,7 +430,7 @@ $aptCount = count($appointments);
             <?php else: ?>
                 <div class="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
                     <div>
-                        <h5 class="font-weight-bolder text-dark mb-1">Results</h5>
+                        <h5 class="font-weight-bolder text-dark mb-1 mt-5">Results</h5>
                         <p class="text-sm text-muted mb-0">Showing matches for <strong class="text-dark">“<?php echo $qDisp; ?>”</strong></p>
                     </div>
                     <div class="d-flex gap-2">
