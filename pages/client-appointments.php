@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../inc/db.php';
+require_once __DIR__ . '/../lib/appointment_availability.php';
 
 
 // Check if client is logged in
@@ -207,7 +208,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $result = $stmt->execute([$client_id, $case_id, $lawyer_id, $startDateTime, $endDateTime, $notes]);
 
                     if ($result) {
-                        $appointmentId = $pdo->lastInsertId();
+                        $appointmentId = (int) $pdo->lastInsertId();
+                        syncAppointmentAvailabilitySlot($pdo, [
+                            'id' => $appointmentId,
+                            'lawyer_id' => $lawyer_id,
+                            'starts_at' => $startDateTime,
+                            'ends_at' => $endDateTime,
+                            'status' => 'pending',
+                        ]);
                         $message = 'Appointment request submitted successfully. Waiting for lawyer approval.';
                         $messageType = 'success';
                     } else {

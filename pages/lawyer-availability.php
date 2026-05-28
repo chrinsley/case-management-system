@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../inc/db.php';
+require_once __DIR__ . '/../lib/appointment_availability.php';
 
 // Check if lawyer is logged in
 if (!isset($_SESSION['lawyer_id'])) {
@@ -72,10 +73,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $slotId = (int)$_POST['slot_id'];
 
         try {
-            $stmt = $pdo->prepare("DELETE FROM lawyer_time_slots WHERE id = ? AND lawyer_id = ?");
-            $stmt->execute([$slotId, $lawyerId]);
-            $message = 'Time slot deleted successfully!';
-            $messageType = 'success';
+            $checkStmt = $pdo->prepare('SELECT appointment_id FROM lawyer_time_slots WHERE id = ? AND lawyer_id = ?');
+            $checkStmt->execute([$slotId, $lawyerId]);
+            $slotRow = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$slotRow) {
+                $message = 'Time slot not found or access denied.';
+                $messageType = 'danger';
+            } elseif (!empty($slotRow['appointment_id'])) {
+                $message = 'This time is blocked by a scheduled appointment and cannot be deleted here.';
+                $messageType = 'warning';
+            } else {
+                $stmt = $pdo->prepare("DELETE FROM lawyer_time_slots WHERE id = ? AND lawyer_id = ?");
+                $stmt->execute([$slotId, $lawyerId]);
+                $message = 'Time slot deleted successfully!';
+                $messageType = 'success';
+            }
         } catch (PDOException $e) {
             $message = 'Error deleting time slot: ' . $e->getMessage();
             $messageType = 'danger';
@@ -86,6 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Fetch current time slots
 $timeSlots = [];
 try {
+    backfillLawyerAppointmentAvailability($pdo, $lawyerId);
+
     $stmt = $pdo->prepare("SELECT * FROM lawyer_time_slots WHERE lawyer_id = ? ORDER BY COALESCE(slot_date, '9999-12-31'), day_of_week, slot_order, start_time");
     $stmt->execute([$lawyerId]);
     $timeSlots = $stmt->fetchAll();
@@ -110,9 +125,15 @@ foreach ($timeSlots as $slot) {
     $slotType = $slot['slot_type'] === 'available' ? 'available' : 'unavailable';
     $startTime = substr($slot['start_time'], 0, 5);
     $endTime = substr($slot['end_time'], 0, 5);
+    $appointmentId = isset($slot['appointment_id']) ? (int) $slot['appointment_id'] : 0;
+    $isAppointment = $appointmentId > 0;
+    $timeLabel = date('g:i A', strtotime($slot['start_time'])) . ' - ' . date('g:i A', strtotime($slot['end_time']));
+    $title = $isAppointment
+        ? 'Unavailable - Appointment ' . $timeLabel
+        : ucfirst($slotType) . ' - ' . $timeLabel;
     $availabilityEvents[] = [
         'id' => (string)$slot['id'],
-        'title' => ucfirst($slotType) . ' - ' . date('g:i A', strtotime($slot['start_time'])) . ' - ' . date('g:i A', strtotime($slot['end_time'])),
+        'title' => $title,
         'start' => $slotDate . 'T' . $startTime . ':00',
         'end' => $slotDate . 'T' . $endTime . ':00',
         'backgroundColor' => $slotType === 'available' ? '#2dce89' : '#f5365c',
@@ -124,7 +145,10 @@ foreach ($timeSlots as $slot) {
             'slotDate' => $slotDate,
             'startTime' => $startTime,
             'endTime' => $endTime,
-            'slotType' => $slotType
+            'slotType' => $slotType,
+            'isAppointment' => $isAppointment,
+            'appointmentId' => $appointmentId,
+            'readOnly' => $isAppointment
         ]
     ];
 }
@@ -526,8 +550,11 @@ $html = <<<'HTML'
                         html += ' data-start-time="' + (props.startTime || '') + '"';
                         html += ' data-end-time="' + (props.endTime || '') + '"';
                         html += ' data-slot-type="' + (props.slotType || 'available') + '"';
+                        html += ' data-read-only="' + (props.readOnly ? '1' : '0') + '"';
                         html += '><span class="availability-fallback-event-label">' + event.title + '</span>';
-                        html += '<button type="button" class="availability-fallback-event-delete" data-slot-id="' + slotId + '" title="Delete slot" aria-label="Delete slot">&times;</button>';
+                        if (!props.readOnly && slotId) {
+                            html += '<button type="button" class="availability-fallback-event-delete" data-slot-id="' + slotId + '" title="Delete slot" aria-label="Delete slot">&times;</button>';
+                        }
                         html += '</div>';
                     });
                 }
@@ -568,6 +595,9 @@ $html = <<<'HTML'
                 var eventEl = event.target.closest('.availability-fallback-event');
                 if (eventEl) {
                     event.stopPropagation();
+                    if (eventEl.getAttribute('data-read-only') === '1') {
+                        return;
+                    }
                     openAvailabilityModal(
                         eventEl.getAttribute('data-day'),
                         eventEl.getAttribute('data-slot-id'),

@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../inc/db.php';
 require_once __DIR__ . '/../lib/case_events.php';
 require_once __DIR__ . '/../lib/case_lawyers.php';
+require_once __DIR__ . '/../lib/appointment_availability.php';
 
 if (!isset($_SESSION['admin_id'])) {
     header('Location: admin-login.php');
@@ -95,6 +96,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
                         ");
                         $stmt->execute([$clientId, $caseId, $lawyerId, $startsAt, $endsAt, $notes, $appointmentId]);
 
+                        if ($oldAppointment && (int) $oldAppointment['lawyer_id'] !== $lawyerId) {
+                            removeAppointmentAvailabilitySlot($pdo, $appointmentId, (int) $oldAppointment['lawyer_id']);
+                        }
+
+                        syncAppointmentAvailabilitySlot($pdo, [
+                            'id' => $appointmentId,
+                            'lawyer_id' => $lawyerId,
+                            'starts_at' => $startsAt,
+                            'ends_at' => $endsAt,
+                            'status' => $oldAppointment['status'] ?? 'pending',
+                        ]);
+
                         if ($oldAppointment) {
                             CaseEvents::trackAppointmentUpdated($caseId, $oldAppointment, [
                                 'client_id' => $clientId,
@@ -114,6 +127,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
                             VALUES (?, ?, ?, ?, ?, ?, 'pending')
                         ");
                         $stmt->execute([$clientId, $caseId, $lawyerId, $startsAt, $endsAt, $notes]);
+                        $newAppointmentId = (int) $pdo->lastInsertId();
+
+                        syncAppointmentAvailabilitySlot($pdo, [
+                            'id' => $newAppointmentId,
+                            'lawyer_id' => $lawyerId,
+                            'starts_at' => $startsAt,
+                            'ends_at' => $endsAt,
+                            'status' => 'pending',
+                        ]);
 
                         CaseEvents::trackAppointmentCreated($caseId, [
                             'starts_at' => $startsAt,

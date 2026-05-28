@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../inc/db.php';
+require_once __DIR__ . '/../lib/appointment_availability.php';
 require_once __DIR__ . '/../lib/case_lawyers.php';
 
 // Check if lawyer is logged in
@@ -63,6 +64,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appointment_action'])
                     ");
                     $stmt->execute([$startsAt, $endsAt, $newStatus, $notes, $appointmentId, $lawyerId]);
 
+                    syncAppointmentAvailabilitySlot($pdo, [
+                        'id' => $appointmentId,
+                        'lawyer_id' => $lawyerId,
+                        'starts_at' => $startsAt,
+                        'ends_at' => $endsAt,
+                        'status' => $newStatus,
+                    ]);
+
                     $message = 'Appointment rescheduled successfully.';
                     $messageType = 'success';
                 }
@@ -75,6 +84,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appointment_action'])
                 $status = $statusMap[$action];
                 $stmt = $pdo->prepare("UPDATE appointments SET status = ? WHERE id = ? AND lawyer_id = ?");
                 $stmt->execute([$status, $appointmentId, $lawyerId]);
+
+                if ($status === 'rejected') {
+                    removeAppointmentAvailabilitySlot($pdo, $appointmentId);
+                } else {
+                    syncAppointmentAvailabilitySlot($pdo, array_merge($appointment, ['status' => $status]));
+                }
 
                 if ($status === 'accepted' && !empty($appointment['case_id'])) {
                     ensureLawyerAssignedToCase($pdo, (int) $appointment['case_id'], $lawyerId);

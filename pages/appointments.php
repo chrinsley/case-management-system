@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../inc/db.php';
 require_once __DIR__ . '/../lib/case_events.php';
+require_once __DIR__ . '/../lib/appointment_availability.php';
 
 $message = '';
 $messageType = '';
@@ -31,12 +32,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($appointmentId && in_array($status, $allowedStatuses, true)) {
             try {
                 // Get old status for tracking
-                $stmt = $pdo->prepare("SELECT case_id, status FROM appointments WHERE id = ?");
+                $stmt = $pdo->prepare("SELECT * FROM appointments WHERE id = ?");
                 $stmt->execute([$appointmentId]);
                 $appointmentData = $stmt->fetch();
 
                 $stmt = $pdo->prepare("UPDATE appointments SET status = ? WHERE id = ?");
                 $stmt->execute([$status, $appointmentId]);
+
+                if ($appointmentData) {
+                    if ($status === 'rejected') {
+                        removeAppointmentAvailabilitySlot($pdo, $appointmentId);
+                    } else {
+                        syncAppointmentAvailabilitySlot($pdo, array_merge($appointmentData, ['status' => $status]));
+                    }
+                }
 
                 // Track status change
                 if ($appointmentData && $appointmentData['status'] != $status) {
@@ -74,6 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Delete the appointment
                 $stmt = $pdo->prepare("DELETE FROM appointments WHERE id = ?");
                 $stmt->execute([$appointmentId]);
+
+                removeAppointmentAvailabilitySlot($pdo, $appointmentId);
 
                 // Track deletion in case events
                 CaseEvents::trackAppointmentDeleted($appointment['case_id'], [
