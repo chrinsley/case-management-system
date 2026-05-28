@@ -10,6 +10,7 @@ $clientMenuItems = [
     ['title' => 'Appointments', 'url' => 'client-appointments.php', 'icon' => 'ni ni-time-alarm', 'id' => 'client-appointments'],
     ['title' => 'Court Tracking', 'url' => 'client-court-tracking.php', 'icon' => 'ni ni-calendar-grid-58', 'id' => 'client-court-tracking'],
     ['title' => 'Payments', 'url' => 'client-payments.php', 'icon' => 'ni ni-money-coins', 'id' => 'client-payments'],
+    ['title' => 'AI Assistant', 'url' => 'chatbot.php', 'icon' => 'ni ni-chat-round', 'id' => 'chatbot'],
 ];
 
 if (!function_exists('clientNavIsActive')) {

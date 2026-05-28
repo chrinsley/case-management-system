@@ -12,6 +12,7 @@ $lawyerMenuItems = [
     ['title' => 'Appointments', 'url' => 'lawyer-appointments.php', 'icon' => 'ni ni-calendar-grid-58', 'id' => 'lawyer-appointments'],
     ['title' => 'Court Tracking', 'url' => 'lawyer-court-tracking.php', 'icon' => 'ni ni-collection', 'id' => 'lawyer-court-tracking'],
     ['title' => 'My Availability', 'url' => 'lawyer-availability.php', 'icon' => 'ni ni-time-alarm', 'id' => 'lawyer-availability'],
+    ['title' => 'AI Assistant', 'url' => 'chatbot.php', 'icon' => 'ni ni-chat-round', 'id' => 'chatbot'],
 ];
 
 function lawyerNavIsActive($itemId, $currentPage)

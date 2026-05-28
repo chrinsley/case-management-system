@@ -270,6 +270,10 @@ if (empty($clients)) {
         $activeCases = (int)$client['active_cases'];
         $lastActivity = $client['last_activity'] ? date('m/d/y', strtotime($client['last_activity'])) : 'N/A';
         $clientId = $client['id'];
+        $clientType = !empty($client['client_type']) ? $client['client_type'] : 'Individual';
+        $typeLabel = $clientType === 'Corporate' && !empty($client['business_name'])
+            ? htmlspecialchars($client['business_name'])
+            : htmlspecialchars($clientType);
         
         // Use avatar image (you can customize this later)
         $avatarImg = '../assets/img/ivana-square.jpg';
@@ -282,7 +286,7 @@ if (empty($clients)) {
                     </div>
                     <div class="d-flex flex-column justify-content-center">
                         <h6 class="mb-0 text-sm">' . $fullName . '</h6>
-                        <p class="text-xs text-secondary mb-0">Individual</p>
+                        <p class="text-xs text-secondary mb-0">' . $typeLabel . '</p>
                     </div>
                 </div>
             </td>
