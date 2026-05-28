@@ -211,6 +211,30 @@ try {
     }
 }
 
+$caseLawyersMap = [];
+$casePrimaryLawyerMap = [];
+try {
+    $caseLawyerRows = $pdo->query("
+        SELECT cl.case_id, cl.lawyer_id
+        FROM case_lawyers cl
+        INNER JOIN lawyers l ON l.id = cl.lawyer_id AND l.is_active = 1
+        ORDER BY cl.case_id, cl.is_primary DESC, cl.assigned_at ASC
+    ")->fetchAll();
+
+    foreach ($caseLawyerRows as $row) {
+        $caseId = (int) $row['case_id'];
+        $lawyerId = (int) $row['lawyer_id'];
+        if (!isset($caseLawyersMap[$caseId])) {
+            $caseLawyersMap[$caseId] = [];
+            $casePrimaryLawyerMap[$caseId] = $lawyerId;
+        }
+        $caseLawyersMap[$caseId][] = $lawyerId;
+    }
+} catch (PDOException $e) {
+    $caseLawyersMap = [];
+    $casePrimaryLawyerMap = [];
+}
+
 try {
     $lawyersList = $pdo->query("
         SELECT l.id, l.first_name, l.last_name, u.username
@@ -230,7 +254,14 @@ try {
 $caseOptions = '<option value="">Select case</option>';
 foreach ($casesList as $case) {
     $selected = ((int)$formData['case_id'] === (int)$case['id']) ? ' selected' : '';
-    $caseOptions .= '<option value="' . (int)$case['id'] . '" data-client="' . htmlspecialchars($case['client_name']) . '"' . $selected . '>' . htmlspecialchars($case['case_display']) . '</option>';
+    $caseId = (int) $case['id'];
+    $assignedLawyerIds = isset($caseLawyersMap[$caseId]) ? $caseLawyersMap[$caseId] : [];
+    $primaryLawyerId = isset($casePrimaryLawyerMap[$caseId]) ? (int) $casePrimaryLawyerMap[$caseId] : '';
+    $caseOptions .= '<option value="' . $caseId . '"'
+        . ' data-client="' . htmlspecialchars($case['client_name']) . '"'
+        . ' data-lawyer-id="' . $primaryLawyerId . '"'
+        . ' data-lawyer-ids="' . htmlspecialchars(implode(',', $assignedLawyerIds)) . '"'
+        . $selected . '>' . htmlspecialchars($case['case_display']) . '</option>';
 }
 
 $lawyerOptions = '<option value="">Select lawyer</option>';
@@ -332,9 +363,10 @@ $html = <<<'HTML'
 
 								<div class="form-group mb-3">
 									<label class="form-control-label text-sm font-weight-bold">Lawyer / Staff <span class="text-danger">*</span></label>
-									<select class="form-control" name="lawyer_id" required>
+									<select class="form-control" name="lawyer_id" id="lawyer_select" required>
 										{LAWYER_OPTIONS}
 									</select>
+									<small class="text-muted">Shows lawyers assigned to the selected case and selects the primary lawyer by default</small>
 								</div>
 
 								<div class="row">
@@ -378,19 +410,68 @@ $html = <<<'HTML'
 		document.addEventListener('DOMContentLoaded', function() {
 			var caseSelect = document.getElementById('case_select');
 			var clientDisplay = document.getElementById('client_display');
+			var lawyerSelect = document.getElementById('lawyer_select');
 
-			if (caseSelect && clientDisplay) {
-				caseSelect.addEventListener('change', function() {
-					var selectedOption = this.options[this.selectedIndex];
-					if (selectedOption && selectedOption.value) {
+			function filterLawyerOptions(allowedLawyerIds, keepCurrentValue) {
+				if (!lawyerSelect) {
+					return;
+				}
+
+				var currentValue = keepCurrentValue ? lawyerSelect.value : '';
+				var hasAllowedLawyers = allowedLawyerIds.length > 0;
+
+				Array.from(lawyerSelect.options).forEach(function(option) {
+					if (!option.value) {
+						option.hidden = false;
+						option.disabled = false;
+						return;
+					}
+
+					var isAllowed = !hasAllowedLawyers
+						|| allowedLawyerIds.indexOf(option.value) !== -1
+						|| (keepCurrentValue && option.value === currentValue);
+					option.hidden = !isAllowed;
+					option.disabled = !isAllowed;
+				});
+			}
+
+			function syncCaseDependentFields(updateLawyer) {
+				if (!caseSelect) {
+					return;
+				}
+
+				var selectedOption = caseSelect.options[caseSelect.selectedIndex];
+				if (selectedOption && selectedOption.value) {
+					if (clientDisplay) {
 						clientDisplay.value = selectedOption.getAttribute('data-client') || '';
-					} else {
+					}
+
+					var lawyerIdsRaw = selectedOption.getAttribute('data-lawyer-ids') || '';
+					var allowedLawyerIds = lawyerIdsRaw ? lawyerIdsRaw.split(',').filter(Boolean) : [];
+					filterLawyerOptions(allowedLawyerIds, !updateLawyer);
+
+					if (updateLawyer && lawyerSelect) {
+						var primaryLawyerId = selectedOption.getAttribute('data-lawyer-id') || '';
+						lawyerSelect.value = primaryLawyerId || allowedLawyerIds[0] || '';
+					}
+				} else {
+					if (clientDisplay) {
 						clientDisplay.value = '';
 					}
+					filterLawyerOptions([], false);
+					if (updateLawyer && lawyerSelect) {
+						lawyerSelect.value = '';
+					}
+				}
+			}
+
+			if (caseSelect) {
+				caseSelect.addEventListener('change', function() {
+					syncCaseDependentFields(true);
 				});
 
 				if (caseSelect.value) {
-					caseSelect.dispatchEvent(new Event('change'));
+					syncCaseDependentFields(false);
 				}
 			}
 		});
