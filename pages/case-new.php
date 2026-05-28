@@ -419,6 +419,11 @@ foreach ($lawyersList as $lawyer) {
     </div>';
 }
 
+$offeredServices = getOfferedServices();
+$offeredServicesHint = !empty($offeredServices)
+    ? '<small class="text-muted d-block mb-2">Choose from your firm\'s offered services, or pick Other for a custom name.</small>'
+    : '<small class="text-muted d-block mb-2"><a href="settings.php">Add services in Settings</a> to enable quick-select here.</small>';
+
 // Render message block
 $messageHtml = '';
 if ($message) {
@@ -571,6 +576,7 @@ $html = <<<'HTML'
 								</div>
 								<div class="form-group">
 									<label class="form-control-label">Services & Fees</label>
+									{OFFERED_SERVICES_HINT}
 									<div class="table-responsive">
 										<table class="table table-bordered" id="services-table">
 											<thead>
@@ -636,19 +642,75 @@ $html = <<<'HTML'
 		// Services management
 		let serviceRowIndex = 0;
 		const existingServices = {EXISTING_SERVICES_JSON};
-		
+		const offeredServices = {OFFERED_SERVICES_JSON};
+
+		function buildServiceNameCell(index, serviceName) {
+			if (!offeredServices.length) {
+				return `
+					<input type="text" class="form-control form-control-sm service-name"
+						name="services[${index}][name]"
+						placeholder="Enter service name" value="${escapeHtml(serviceName)}" required>`;
+			}
+
+			const isOther = serviceName && offeredServices.indexOf(serviceName) === -1;
+			let options = '<option value="">Select service...</option>';
+			offeredServices.forEach(function(service) {
+				const selected = service === serviceName ? ' selected' : '';
+				options += `<option value="${escapeHtml(service)}"${selected}>${escapeHtml(service)}</option>`;
+			});
+			options += `<option value="__other__"${isOther ? ' selected' : ''}>Other...</option>`;
+
+			return `
+				<select class="form-select form-select-sm service-select">${options}</select>
+				<input type="text" class="form-control form-control-sm service-name-custom mt-1${isOther ? '' : ' d-none'}"
+					placeholder="Enter custom service name" value="${isOther ? escapeHtml(serviceName) : ''}">
+				<input type="hidden" class="service-name-input" name="services[${index}][name]" value="${escapeHtml(serviceName)}" required>`;
+		}
+
+		function syncServiceName(row) {
+			const select = row.querySelector('.service-select');
+			const hidden = row.querySelector('.service-name-input');
+			if (!select || !hidden) {
+				return;
+			}
+			const custom = row.querySelector('.service-name-custom');
+			if (select.value === '__other__') {
+				custom.classList.remove('d-none');
+				hidden.value = custom.value.trim();
+			} else {
+				custom.classList.add('d-none');
+				custom.value = '';
+				hidden.value = select.value;
+			}
+		}
+
+		function attachServiceRowListeners(row) {
+			row.querySelector('.service-price').addEventListener('input', calculateTotal);
+			row.querySelector('.remove-service-row').addEventListener('click', function() {
+				row.remove();
+				calculateTotal();
+			});
+
+			const select = row.querySelector('.service-select');
+			if (select) {
+				select.addEventListener('change', function() {
+					syncServiceName(row);
+				});
+				const custom = row.querySelector('.service-name-custom');
+				custom.addEventListener('input', function() {
+					syncServiceName(row);
+				});
+			}
+		}
+
 		function addServiceRow(serviceName = '', price = '') {
 			const tbody = document.getElementById('services-tbody');
 			const row = document.createElement('tr');
 			row.innerHTML = `
+				<td>${buildServiceNameCell(serviceRowIndex, serviceName)}</td>
 				<td>
-					<input type="text" class="form-control form-control-sm service-name" 
-						name="services[${serviceRowIndex}][name]" 
-						placeholder="Enter service name" value="${escapeHtml(serviceName)}" required>
-				</td>
-				<td>
-					<input type="number" class="form-control form-control-sm service-price" 
-						name="services[${serviceRowIndex}][price]" 
+					<input type="number" class="form-control form-control-sm service-price"
+						name="services[${serviceRowIndex}][price]"
 						step="0.01" min="0" placeholder="0.00" value="${escapeHtml(price)}" required>
 				</td>
 				<td class="align-middle text-center">
@@ -657,13 +719,8 @@ $html = <<<'HTML'
 			`;
 			tbody.appendChild(row);
 			serviceRowIndex++;
-			
-			// Attach event listeners
-			row.querySelector('.service-price').addEventListener('input', calculateTotal);
-			row.querySelector('.remove-service-row').addEventListener('click', function() {
-				row.remove();
-				calculateTotal();
-			});
+			syncServiceName(row);
+			attachServiceRowListeners(row);
 		}
 		
 		function calculateTotal() {
@@ -700,6 +757,25 @@ $html = <<<'HTML'
 			document.getElementById('add-service-row').addEventListener('click', function() {
 				addServiceRow();
 			});
+
+			const caseForm = document.querySelector('form[method="post"]');
+			if (caseForm) {
+				caseForm.addEventListener('submit', function(event) {
+					document.querySelectorAll('#services-tbody tr').forEach(syncServiceName);
+					const invalidRow = Array.from(document.querySelectorAll('#services-tbody tr')).find(function(row) {
+						const hidden = row.querySelector('.service-name-input');
+						const textInput = row.querySelector('.service-name');
+						if (hidden) {
+							return !hidden.value.trim();
+						}
+						return textInput && !textInput.value.trim();
+					});
+					if (invalidRow) {
+						event.preventDefault();
+						alert('Please select or enter a service name for each row.');
+					}
+				});
+			}
 			
 			// Calculate total on page load
 			calculateTotal();
@@ -724,9 +800,12 @@ $html = str_replace('{ESTIMATED_FEES_VALUE}', htmlspecialchars($formData['estima
 $html = str_replace('{SUBMIT_LABEL}', htmlspecialchars($submitLabel), $html);
 $html = str_replace('{CANCEL_LINK}', $cancelLink, $html);
 
-// Services JSON for JavaScript
-$servicesJson = json_encode($existingServices);
-$html = str_replace('{EXISTING_SERVICES_JSON}', htmlspecialchars($servicesJson, ENT_QUOTES, 'UTF-8'), $html);
+// Services JSON for JavaScript (json_encode is safe in script tags; do not htmlspecialchars)
+$servicesJson = json_encode($existingServices, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+$html = str_replace('{EXISTING_SERVICES_JSON}', $servicesJson, $html);
+$offeredServicesJson = json_encode($offeredServices, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+$html = str_replace('{OFFERED_SERVICES_JSON}', $offeredServicesJson, $html);
+$html = str_replace('{OFFERED_SERVICES_HINT}', $offeredServicesHint, $html);
 
 // Currency symbol for display
 $currencySymbol = getCurrencySymbol();

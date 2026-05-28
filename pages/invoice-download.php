@@ -51,8 +51,9 @@ $status = ucfirst($invoice['status']);
 $notes = trim($invoice['notes']) ?: 'Thank you for your business.';
 $today = date('F d, Y');
 
-$firmName = 'LegalPro Case Manager';
-$firmAddress = '123 Legal Street, Capital City';
+$firmName = getCompanyName();
+$firmDetails = getCompanyDetails();
+$firmAddress = $firmDetails !== '' ? $firmDetails : '123 Legal Street, Capital City';
 $firmEmail = 'support@legalpro.local';
 $firmPhone = '+1 (555) 010-0000';
 

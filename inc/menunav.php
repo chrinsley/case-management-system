@@ -3,6 +3,10 @@
 // Clean navigation menu for LegalPro Case Manager
 // Usage: include __DIR__ . '/../inc/menunav.php';
 
+$companyBranding = getCompanyBranding();
+$companyName = $companyBranding['name'];
+$companyLogoUrl = $companyBranding['logo_url'];
+
 // Get current page to highlight active menu item
 $currentPage = basename($_SERVER['PHP_SELF']);
 $currentPage = str_replace('.php', '', $currentPage);
@@ -173,8 +177,8 @@ function isActive($itemId, $currentPage) {
     <div class="sidenav-header" style="flex-shrink: 0; padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: center; position: relative; width: 100%;">
         <i class="fas fa-times p-3 cursor-pointer text-secondary opacity-5 position-absolute end-0 top-0 d-none d-xl-none" aria-hidden="true" id="iconSidenav"></i>
         <a class="navbar-brand m-0" href="dashboard.php" style="display: flex; align-items: center; justify-content: center; margin: 0 auto; width: 100%;">
-            <img src="../assets/img/logo-ct-dark.png" width="24" height="24" class="navbar-brand-img" alt="LegalPro logo">
-            <span class="ms-2 font-weight-bold" style="font-size: 0.875rem;">LegalPro</span>
+            <img src="<?php echo htmlspecialchars($companyLogoUrl); ?>" width="24" height="24" class="navbar-brand-img" alt="<?php echo htmlspecialchars($companyName); ?> logo" style="object-fit: contain;">
+            <span class="ms-2 font-weight-bold" style="font-size: 0.875rem;"><?php echo htmlspecialchars($companyName); ?></span>
         </a>
     </div>
     <hr class="horizontal dark mt-0 mb-0" style="flex-shrink: 0; margin: 0;">

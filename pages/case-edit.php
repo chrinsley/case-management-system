@@ -656,6 +656,23 @@ if (empty($existingServices)) {
     $servicesHtml = '<div class="text-center text-muted py-3">No services added yet</div>';
 }
 
+$offeredServices = getOfferedServices();
+if (empty($offeredServices)) {
+    $offeredServiceFieldHtml = '<input type="text" class="form-control" name="service_name" required placeholder="Enter service name">';
+    $offeredServiceFieldHint = '<small class="text-muted"><a href="settings.php">Add services in Settings</a> to enable quick-select here.</small>';
+} else {
+    $offeredServiceOptions = '<option value="">Select service...</option>';
+    foreach ($offeredServices as $serviceName) {
+        $offeredServiceOptions .= '<option value="' . htmlspecialchars($serviceName) . '">' . htmlspecialchars($serviceName) . '</option>';
+    }
+    $offeredServiceOptions .= '<option value="__other__">Other...</option>';
+    $offeredServiceFieldHtml = '
+        <select class="form-select" id="case_service_select">' . $offeredServiceOptions . '</select>
+        <input type="text" class="form-control mt-2 d-none" id="case_service_custom" placeholder="Enter custom service name">
+        <input type="hidden" name="service_name" id="case_service_name" required>';
+    $offeredServiceFieldHint = '<small class="text-muted">Choose from your firm\'s offered services, or pick Other for a custom name.</small>';
+}
+
 // Build tasks HTML
 $tasksHtml = '';
 if (!empty($tasks)) {
@@ -1006,8 +1023,9 @@ $html = <<<'HTML'
                     <div class="modal-body">
                         <input type="hidden" name="form_type" value="add_service">
                         <div class="mb-3">
-                            <label class="form-label">Service Name</label>
-                            <input type="text" class="form-control" name="service_name" required>
+                            <label class="form-label">Service</label>
+                            {OFFERED_SERVICE_FIELD}
+                            <div class="mt-1">{OFFERED_SERVICE_FIELD_HINT}</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Price</label>
@@ -1252,6 +1270,47 @@ $html = <<<'HTML'
                     }
                 });
             }
+
+            var serviceSelect = document.getElementById('case_service_select');
+            if (serviceSelect) {
+                var serviceCustom = document.getElementById('case_service_custom');
+                var serviceHidden = document.getElementById('case_service_name');
+                var serviceForm = serviceSelect.closest('form');
+
+                function syncCaseServiceName() {
+                    if (serviceSelect.value === '__other__') {
+                        serviceCustom.classList.remove('d-none');
+                        serviceHidden.value = serviceCustom.value.trim();
+                    } else {
+                        serviceCustom.classList.add('d-none');
+                        serviceCustom.value = '';
+                        serviceHidden.value = serviceSelect.value;
+                    }
+                }
+
+                serviceSelect.addEventListener('change', syncCaseServiceName);
+                serviceCustom.addEventListener('input', syncCaseServiceName);
+
+                if (serviceForm) {
+                    serviceForm.addEventListener('submit', function(event) {
+                        syncCaseServiceName();
+                        if (!serviceHidden.value.trim()) {
+                            event.preventDefault();
+                            alert('Please select or enter a service name.');
+                        }
+                    });
+                }
+
+                var addServiceModal = document.getElementById('addServiceModal');
+                if (addServiceModal) {
+                    addServiceModal.addEventListener('show.bs.modal', function() {
+                        serviceSelect.value = '';
+                        serviceCustom.value = '';
+                        serviceCustom.classList.add('d-none');
+                        serviceHidden.value = '';
+                    });
+                }
+            }
         });
     </script>
 </body>
@@ -1282,6 +1341,8 @@ $replacements = [
     '{EXPECTED_COMPLETION}' => isset($case['expected_completion']) ? $case['expected_completion'] : '',
     '{DESCRIPTION}' => htmlspecialchars(isset($case['description']) ? $case['description'] : ''),
     '{SERVICES_HTML}' => $servicesHtml,
+    '{OFFERED_SERVICE_FIELD}' => $offeredServiceFieldHtml,
+    '{OFFERED_SERVICE_FIELD_HINT}' => $offeredServiceFieldHint,
     '{TASKS_HTML}' => $tasksHtml,
     '{STAGES_HTML}' => $stagesHtml,
     '{NEXT_STAGE_NUMBER}' => $nextStageNumber,

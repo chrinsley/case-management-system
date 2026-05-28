@@ -80,13 +80,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$slotRow) {
                 $message = 'Time slot not found or access denied.';
                 $messageType = 'danger';
-            } elseif (!empty($slotRow['appointment_id'])) {
-                $message = 'This time is blocked by a scheduled appointment and cannot be deleted here.';
-                $messageType = 'warning';
             } else {
-                $stmt = $pdo->prepare("DELETE FROM lawyer_time_slots WHERE id = ? AND lawyer_id = ?");
+                if (!empty($slotRow['appointment_id'])) {
+                    $appointmentId = (int) $slotRow['appointment_id'];
+                    $apptStmt = $pdo->prepare("UPDATE appointments SET status = 'rejected' WHERE id = ? AND lawyer_id = ?");
+                    $apptStmt->execute([$appointmentId, $lawyerId]);
+                }
+
+                $stmt = $pdo->prepare('DELETE FROM lawyer_time_slots WHERE id = ? AND lawyer_id = ?');
                 $stmt->execute([$slotId, $lawyerId]);
-                $message = 'Time slot deleted successfully!';
+
+                $message = !empty($slotRow['appointment_id'])
+                    ? 'Appointment block removed and the appointment was marked as rejected.'
+                    : 'Time slot deleted successfully!';
                 $messageType = 'success';
             }
         } catch (PDOException $e) {
@@ -498,8 +504,14 @@ $html = <<<'HTML'
             openAvailabilityModal(dayNameFromDate(parseIsoDate(dateStr)), '', dateStr);
         }
 
-        function deleteAvailabilitySlot(slotId) {
-            if (!slotId || !confirm('Delete this time slot?')) {
+        function deleteAvailabilitySlot(slotId, isAppointment) {
+            if (!slotId) {
+                return;
+            }
+            var confirmMessage = isAppointment
+                ? 'Remove this appointment block? The linked appointment will be marked as rejected.'
+                : 'Delete this time slot?';
+            if (!confirm(confirmMessage)) {
                 return;
             }
             document.getElementById('delete_slot_id').value = slotId;
@@ -552,8 +564,12 @@ $html = <<<'HTML'
                         html += ' data-slot-type="' + (props.slotType || 'available') + '"';
                         html += ' data-read-only="' + (props.readOnly ? '1' : '0') + '"';
                         html += '><span class="availability-fallback-event-label">' + event.title + '</span>';
-                        if (!props.readOnly && slotId) {
-                            html += '<button type="button" class="availability-fallback-event-delete" data-slot-id="' + slotId + '" title="Delete slot" aria-label="Delete slot">&times;</button>';
+                        if (slotId) {
+                            html += '<button type="button" class="availability-fallback-event-delete" data-slot-id="' + slotId + '"';
+                            if (props.isAppointment) {
+                                html += ' data-is-appointment="1"';
+                            }
+                            html += ' title="Delete slot" aria-label="Delete slot">&times;</button>';
                         }
                         html += '</div>';
                     });
@@ -588,7 +604,10 @@ $html = <<<'HTML'
                 var deleteBtn = event.target.closest('.availability-fallback-event-delete');
                 if (deleteBtn) {
                     event.stopPropagation();
-                    deleteAvailabilitySlot(deleteBtn.getAttribute('data-slot-id'));
+                    deleteAvailabilitySlot(
+                        deleteBtn.getAttribute('data-slot-id'),
+                        deleteBtn.getAttribute('data-is-appointment') === '1'
+                    );
                     return;
                 }
 

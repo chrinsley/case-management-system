@@ -23,14 +23,17 @@ if (!function_exists('clientNavIsActive')) {
 }
 
 $clientDisplayName = isset($_SESSION['client_name']) ? (string) $_SESSION['client_name'] : 'Client';
+$companyBranding = getCompanyBranding();
+$companyName = $companyBranding['name'];
+$companyLogoUrl = $companyBranding['logo_url'];
 ?>
 
 <aside class="sidenav bg-white navbar navbar-vertical navbar-expand-xs border-0 border-radius-xl fixed-start ms-4 legalpro-client-sidenav" id="sidenav-main">
     <div class="sidenav-header">
         <i class="fas fa-times p-3 cursor-pointer text-secondary opacity-5 position-absolute end-0 top-0 d-none d-xl-none" aria-hidden="true" id="iconSidenav"></i>
         <a class="navbar-brand m-0" href="client-dashboard.php">
-            <img src="../assets/img/logo-ct-dark.png" width="26" height="26" class="navbar-brand-img h-100" alt="LegalPro logo">
-            <span class="ms-1 font-weight-bold">LegalPro</span>
+            <img src="<?php echo htmlspecialchars($companyLogoUrl); ?>" width="26" height="26" class="navbar-brand-img h-100" alt="<?php echo htmlspecialchars($companyName); ?> logo" style="object-fit: contain;">
+            <span class="ms-1 font-weight-bold"><?php echo htmlspecialchars($companyName); ?></span>
         </a>
     </div>
     <hr class="horizontal dark mt-0 mb-0">

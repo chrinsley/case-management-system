@@ -26,6 +26,9 @@ function lawyerNavIsActive($itemId, $currentPage)
 }
 
 $lawyerDisplayName = isset($_SESSION['lawyer_name']) ? (string) $_SESSION['lawyer_name'] : 'Lawyer';
+$companyBranding = getCompanyBranding();
+$companyName = $companyBranding['name'];
+$companyLogoUrl = $companyBranding['logo_url'];
 ?>
 
 <link href="../assets/css/legalpro-lawyer-portal.css?v=4" rel="stylesheet" />
@@ -92,8 +95,8 @@ $lawyerDisplayName = isset($_SESSION['lawyer_name']) ? (string) $_SESSION['lawye
     <div class="sidenav-header" style="flex-shrink: 0; padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: center; position: relative; width: 100%;">
         <i class="fas fa-times p-3 cursor-pointer text-secondary opacity-5 position-absolute end-0 top-0 d-none d-xl-none" aria-hidden="true" id="iconSidenav"></i>
         <a class="navbar-brand m-0" href="lawyer-dashboard.php" style="display: flex; align-items: center; justify-content: center; margin: 0 auto; width: 100%;">
-            <img src="../assets/img/logo-ct-dark.png" width="26" height="26" class="navbar-brand-img" alt="LegalPro logo">
-            <span class="ms-2 font-weight-bold" style="font-size: 0.875rem;">LegalPro</span>
+            <img src="<?php echo htmlspecialchars($companyLogoUrl); ?>" width="26" height="26" class="navbar-brand-img" alt="<?php echo htmlspecialchars($companyName); ?> logo" style="object-fit: contain;">
+            <span class="ms-2 font-weight-bold" style="font-size: 0.875rem;"><?php echo htmlspecialchars($companyName); ?></span>
         </a>
     </div>
     <hr class="horizontal dark mt-0 mb-0" style="flex-shrink: 0; margin: 0;">

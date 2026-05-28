@@ -2,6 +2,9 @@
 session_start();
 require_once __DIR__ . '/../inc/db.php';
 
+$companyBranding = getCompanyBranding();
+$loginPortalTitle = $companyBranding['name'] . ' Portal';
+
 $message = '';
 $messageType = '';
 
@@ -142,7 +145,7 @@ $html = <<<'HTML'
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="apple-touch-icon" sizes="76x76" href="../assets/img/apple-icon.png">
     <link rel="icon" type="image/png" href="../assets/img/favicon.png">
-    <title>LegalPro - Login Portal</title>
+    <title>{COMPANY_NAME} - Login Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
     <link href="https://demos.creative-tim.com/argon-dashboard-pro/assets/css/nucleo-icons.css" rel="stylesheet" />
     <link href="https://demos.creative-tim.com/argon-dashboard-pro/assets/css/nucleo-svg.css" rel="stylesheet" />
@@ -349,7 +352,8 @@ $html = <<<'HTML'
         <div class="w-100" style="max-width: 440px;">
                 <div class="card auth-card">
                     <div class="card-header pb-0 text-center border-0">
-                        <h3 class="mb-0 font-weight-bolder">LegalPro Portal</h3>
+                        <img src="{COMPANY_LOGO_URL}" alt="{COMPANY_NAME} logo" style="width: 48px; height: 48px; object-fit: contain; margin-bottom: 0.75rem;">
+                        <h3 class="mb-0 font-weight-bolder">{LOGIN_PORTAL_TITLE}</h3>
                         <p class="mb-0">Choose how you sign in, then enter your credentials.</p>
                     </div>
                     <div class="card-body auth-body">
@@ -448,5 +452,8 @@ $html = <<<'HTML'
 HTML;
 
 $html = str_replace('{MESSAGE}', $messageHtml, $html);
+$html = str_replace('{COMPANY_NAME}', htmlspecialchars($companyBranding['name']), $html);
+$html = str_replace('{COMPANY_LOGO_URL}', htmlspecialchars($companyBranding['logo_url']), $html);
+$html = str_replace('{LOGIN_PORTAL_TITLE}', htmlspecialchars($loginPortalTitle), $html);
 echo $html;
 ?>

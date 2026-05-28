@@ -159,4 +159,6 @@ function setOfferedServices(array $services) {
     setSetting('offered_services', json_encode($normalized, JSON_UNESCAPED_UNICODE));
 }
 
+require_once __DIR__ . '/../lib/branding.php';
+
 ?>
