@@ -197,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     '{{start_date}}' => isset($case['start_date']) ? $case['start_date'] : '',
                     '{{expected_completion}}' => isset($case['expected_completion']) ? $case['expected_completion'] : '',
                     '{{today}}' => date('d M Y'),
-                    '{{firm_name}}' => 'LegalPro Case Manager',
+                    '{{firm_name}}' => getCompanyName(),
                     '{{lawyer_name}}' => 'Assigned Counsel',
                     '{{balance}}' => isset($case['estimated_fees']) ? formatCurrency((float)$case['estimated_fees']) : formatCurrency(0),
                     '{{scope}}' => 'Legal representation as described herein',
@@ -569,9 +569,34 @@ $html = <<<'HTML'
             background-color: #f8f9fa !important;
             transition: background-color 0.2s ease;
         }
+        .document-item {
+            gap: 0.75rem;
+        }
         .document-item:hover {
             background-color: #f8f9fa !important;
             transition: background-color 0.2s ease;
+        }
+        .document-item > .d-flex.align-items-center:first-child {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .document-item > .d-flex.align-items-center:first-child > div:last-child {
+            min-width: 0;
+            overflow: hidden;
+        }
+        .document-item h6,
+        .document-item p.text-xs {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .document-item > .d-flex.gap-2 {
+            flex: 0 0 auto;
+            flex-shrink: 0;
+            flex-wrap: nowrap;
+        }
+        .document-item .btn {
+            white-space: nowrap;
         }
         .attach-btn:hover {
             transform: translateY(-1px);
