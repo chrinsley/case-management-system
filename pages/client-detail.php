@@ -2,6 +2,36 @@
 require_once __DIR__ . '/../inc/db.php';
 require_once __DIR__ . '/../inc/password-validation.php';
 
+function ensureClientProfileColumns(PDO $pdo) {
+    static $ready = false;
+    if ($ready) {
+        return;
+    }
+
+    $columns = [
+        'client_type' => "VARCHAR(20) NOT NULL DEFAULT 'Individual' AFTER phone",
+        'address' => 'TEXT NULL AFTER client_type',
+        'business_name' => 'VARCHAR(255) NULL AFTER address',
+        'business_address' => 'TEXT NULL AFTER business_name',
+        'brn' => 'VARCHAR(100) NULL AFTER business_address',
+        'business_description' => 'TEXT NULL AFTER brn',
+    ];
+
+    foreach ($columns as $name => $definition) {
+        try {
+            $pdo->query("ALTER TABLE clients ADD COLUMN `$name` $definition");
+        } catch (PDOException $e) {
+            if (stripos($e->getMessage(), 'duplicate column name') === false) {
+                throw $e;
+            }
+        }
+    }
+
+    $ready = true;
+}
+
+ensureClientProfileColumns($pdo);
+
 $message = '';
 $messageType = '';
 $updatePasswordErrorHtml = '';
@@ -22,7 +52,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $phone = trim(isset($_POST['phone']) ? $_POST['phone'] : '');
     $address = trim(isset($_POST['address']) ? $_POST['address'] : '');
     $type = trim(isset($_POST['type']) ? $_POST['type'] : 'Individual');
+    $business_name = trim(isset($_POST['business_name']) ? $_POST['business_name'] : '');
+    $business_address = trim(isset($_POST['business_address']) ? $_POST['business_address'] : '');
+    $brn = trim(isset($_POST['brn']) ? $_POST['brn'] : '');
+    $business_description = trim(isset($_POST['business_description']) ? $_POST['business_description'] : '');
     $client_id = isset($_POST['client_id']) ? $_POST['client_id'] : null;
+
+    if (!in_array($type, ['Individual', 'Corporate'], true)) {
+        $type = 'Individual';
+    }
+    if ($type === 'Corporate') {
+        $address = '';
+    } else {
+        $business_name = '';
+        $business_address = '';
+        $brn = '';
+        $business_description = '';
+    }
 
     // Handle user account updates
     $update_username = trim(isset($_POST['update_username']) ? $_POST['update_username'] : '');
@@ -40,6 +86,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($first_name) || empty($last_name)) {
         $message = 'First name and last name are required.';
+        $messageType = 'danger';
+    } elseif ($type === 'Corporate' && $business_name === '') {
+        $message = 'Business name is required for corporate clients.';
         $messageType = 'danger';
     } else {
         if (!empty($update_password) || !empty($confirm_password)) {
@@ -75,8 +124,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             if ($client_id) {
                 // Update existing client
-                $stmt = $pdo->prepare("UPDATE clients SET first_name = ?, last_name = ?, email = ?, phone = ? WHERE id = ?");
-                $stmt->execute([$first_name, $last_name, $email, $phone, $client_id]);
+                $stmt = $pdo->prepare("UPDATE clients SET first_name = ?, last_name = ?, email = ?, phone = ?, client_type = ?, address = ?, business_name = ?, business_address = ?, brn = ?, business_description = ? WHERE id = ?");
+                $stmt->execute([
+                    $first_name,
+                    $last_name,
+                    $email,
+                    $phone,
+                    $type,
+                    $address !== '' ? $address : null,
+                    $business_name !== '' ? $business_name : null,
+                    $business_address !== '' ? $business_address : null,
+                    $brn !== '' ? $brn : null,
+                    $business_description !== '' ? $business_description : null,
+                    $client_id,
+                ]);
 
                 // Update user account if username/password provided and client has a user account
                 $stmt = $pdo->prepare("SELECT user_id FROM clients WHERE id = ?");
@@ -119,10 +180,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $messageType = 'success';
+
+                $stmt = $pdo->prepare("SELECT * FROM clients WHERE id = ?");
+                $stmt->execute([$client_id]);
+                $client = $stmt->fetch();
             } else {
                 // Insert new client
-                $stmt = $pdo->prepare("INSERT INTO clients (first_name, last_name, email, phone) VALUES (?, ?, ?, ?)");
-                $stmt->execute([$first_name, $last_name, $email, $phone]);
+                $stmt = $pdo->prepare("INSERT INTO clients (first_name, last_name, email, phone, client_type, address, business_name, business_address, brn, business_description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([
+                    $first_name,
+                    $last_name,
+                    $email,
+                    $phone,
+                    $type,
+                    $address !== '' ? $address : null,
+                    $business_name !== '' ? $business_name : null,
+                    $business_address !== '' ? $business_address : null,
+                    $brn !== '' ? $brn : null,
+                    $business_description !== '' ? $business_description : null,
+                ]);
                 $newClientId = $pdo->lastInsertId();
 
                 if ($createUser && !empty($username) && !empty($password)) {
@@ -345,6 +421,7 @@ $html = <<<'HTML'
 										</div>
 									</div>
 								</div>
+								<p class="text-sm text-muted mb-3" id="corporate-contact-hint" style="display: none;">For corporate clients, first and last name are the main contact person at the company.</p>
 								<div class="row">
 									<div class="col-md-6">
 										<div class="form-group">
@@ -360,15 +437,36 @@ $html = <<<'HTML'
 									</div>
 								</div>
 								<div class="form-group">
-									<label class="form-control-label">Address</label>
-									<input class="form-control" type="text" name="address" placeholder="Street, City, Country" value="{ADDRESS}">
-								</div>
-								<div class="form-group">
 									<label class="form-control-label">Type</label>
-									<select class="form-control" name="type">
+									<select class="form-control" name="type" id="client_type" onchange="toggleClientTypeFields()">
 										<option value="Individual" {TYPE_INDIVIDUAL}>Individual</option>
 										<option value="Corporate" {TYPE_CORPORATE}>Corporate</option>
 									</select>
+								</div>
+								<div id="individual-fields" class="client-type-panel">
+									<div class="form-group">
+										<label class="form-control-label">Address</label>
+										<input class="form-control" type="text" name="address" id="client_address" placeholder="Street, City, Country" value="{ADDRESS}">
+									</div>
+								</div>
+								<div id="corporate-fields" class="client-type-panel border rounded p-3 bg-light" style="display: none;">
+									<h6 class="text-sm mb-3">Business Details</h6>
+									<div class="form-group">
+										<label class="form-control-label">Business Name <span class="text-danger">*</span></label>
+										<input class="form-control" type="text" name="business_name" id="business_name" placeholder="Registered company name" value="{BUSINESS_NAME}">
+									</div>
+									<div class="form-group">
+										<label class="form-control-label">Business Address</label>
+										<input class="form-control" type="text" name="business_address" id="business_address" placeholder="Street, City, Country" value="{BUSINESS_ADDRESS}">
+									</div>
+									<div class="form-group">
+										<label class="form-control-label">BRN</label>
+										<input class="form-control" type="text" name="brn" id="brn" placeholder="Business Registration Number" value="{BRN}">
+									</div>
+									<div class="form-group mb-0">
+										<label class="form-control-label">Business Description</label>
+										<textarea class="form-control" name="business_description" id="business_description" rows="3" placeholder="Brief description of the business">{BUSINESS_DESCRIPTION}</textarea>
+									</div>
 								</div>
 
 								<!-- User Account Update Section (only show for existing clients with user accounts) -->
@@ -439,8 +537,36 @@ $html = <<<'HTML'
 			if (clientForm && window.LegalProPassword) {
 				LegalProPassword.attachClientDetailForm(clientForm);
 			}
+			toggleClientTypeFields();
 			{SHOW_CREATE_USER_FIELDS}
 		});
+
+		function toggleClientTypeFields() {
+			var typeSelect = document.getElementById('client_type');
+			var individualFields = document.getElementById('individual-fields');
+			var corporateFields = document.getElementById('corporate-fields');
+			var addressField = document.getElementById('client_address');
+			var businessNameField = document.getElementById('business_name');
+			var contactHint = document.getElementById('corporate-contact-hint');
+
+			if (!typeSelect || !individualFields || !corporateFields) {
+				return;
+			}
+
+			var isCorporate = typeSelect.value === 'Corporate';
+			individualFields.style.display = isCorporate ? 'none' : 'block';
+			corporateFields.style.display = isCorporate ? 'block' : 'none';
+			if (contactHint) {
+				contactHint.style.display = isCorporate ? 'block' : 'none';
+			}
+
+			if (addressField) {
+				addressField.required = false;
+			}
+			if (businessNameField) {
+				businessNameField.required = isCorporate;
+			}
+		}
 
 		function toggleUserAccountFields() {
 			const checkbox = document.getElementById('create_user_account');
@@ -471,13 +597,36 @@ $html = <<<'HTML'
 HTML;
 
 // Replace placeholders with actual values
-$first_name = $client ? htmlspecialchars($client['first_name']) : '';
-$last_name = $client ? htmlspecialchars($client['last_name']) : '';
-$email = $client ? htmlspecialchars($client['email']) : '';
-$phone = $client ? htmlspecialchars($client['phone']) : '';
-$address = ''; // Not in database yet
-$type = 'Individual';
-$client_id_value = $client ? $client['id'] : '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $messageType === 'danger') {
+    $first_name = htmlspecialchars(isset($_POST['first_name']) ? trim($_POST['first_name']) : '');
+    $last_name = htmlspecialchars(isset($_POST['last_name']) ? trim($_POST['last_name']) : '');
+    $email = htmlspecialchars(isset($_POST['email']) ? trim($_POST['email']) : '');
+    $phone = htmlspecialchars(isset($_POST['phone']) ? trim($_POST['phone']) : '');
+    $address = htmlspecialchars(isset($_POST['address']) ? trim($_POST['address']) : '');
+    $type = in_array(isset($_POST['type']) ? $_POST['type'] : 'Individual', ['Individual', 'Corporate'], true)
+        ? $_POST['type']
+        : 'Individual';
+    $business_name = htmlspecialchars(isset($_POST['business_name']) ? trim($_POST['business_name']) : '');
+    $business_address = htmlspecialchars(isset($_POST['business_address']) ? trim($_POST['business_address']) : '');
+    $brn = htmlspecialchars(isset($_POST['brn']) ? trim($_POST['brn']) : '');
+    $business_description = htmlspecialchars(isset($_POST['business_description']) ? trim($_POST['business_description']) : '');
+    $client_id_value = isset($_POST['client_id']) ? (int) $_POST['client_id'] : '';
+} else {
+    $first_name = $client ? htmlspecialchars($client['first_name']) : '';
+    $last_name = $client ? htmlspecialchars($client['last_name']) : '';
+    $email = $client ? htmlspecialchars($client['email']) : '';
+    $phone = $client ? htmlspecialchars($client['phone']) : '';
+    $address = $client && !empty($client['address']) ? htmlspecialchars($client['address']) : '';
+    $type = $client && !empty($client['client_type']) ? $client['client_type'] : 'Individual';
+    if (!in_array($type, ['Individual', 'Corporate'], true)) {
+        $type = 'Individual';
+    }
+    $business_name = $client && !empty($client['business_name']) ? htmlspecialchars($client['business_name']) : '';
+    $business_address = $client && !empty($client['business_address']) ? htmlspecialchars($client['business_address']) : '';
+    $brn = $client && !empty($client['brn']) ? htmlspecialchars($client['brn']) : '';
+    $business_description = $client && !empty($client['business_description']) ? htmlspecialchars($client['business_description']) : '';
+    $client_id_value = $client ? $client['id'] : '';
+}
 
 // Handle user account sections
 $userAccountUpdateSection = '';
@@ -570,6 +719,10 @@ $html = str_replace('{LAST_NAME}', $last_name, $html);
 $html = str_replace('{EMAIL}', $email, $html);
 $html = str_replace('{PHONE}', $phone, $html);
 $html = str_replace('{ADDRESS}', $address, $html);
+$html = str_replace('{BUSINESS_NAME}', $business_name, $html);
+$html = str_replace('{BUSINESS_ADDRESS}', $business_address, $html);
+$html = str_replace('{BRN}', $brn, $html);
+$html = str_replace('{BUSINESS_DESCRIPTION}', $business_description, $html);
 $html = str_replace('{CLIENT_ID}', $client_id_value, $html);
 $html = str_replace('{TYPE_INDIVIDUAL}', $type === 'Individual' ? 'selected' : '', $html);
 $html = str_replace('{TYPE_CORPORATE}', $type === 'Corporate' ? 'selected' : '', $html);
