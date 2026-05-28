@@ -502,16 +502,16 @@ $html = <<<'HTML'
 											</div>
 										</div>
 										<div class="form-group">
-											<label class="form-control-label">Case Title <span class="text-danger">*</span></label>
-											<input class="form-control" type="text" name="title" placeholder="e.g., Contract Dispute" value="{TITLE_VALUE}" required>
-										</div>
-									</div>
-									<div class="col-md-6">
-										<div class="form-group">
 											<label class="form-control-label">Assigned Lawyers</label>
 											<div class="border rounded lawyer-picker">
 												{LAWYER_CHECKBOXES}
 											</div>
+										</div>
+									</div>
+									<div class="col-md-6">
+										<div class="form-group">
+											<label class="form-control-label">Case Title <span class="text-danger">*</span></label>
+											<input class="form-control" type="text" name="title" placeholder="e.g., Contract Dispute" value="{TITLE_VALUE}" required>
 										</div>
 									</div>
 								</div>

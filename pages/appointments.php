@@ -1,4 +1,3 @@
-
 <?php
 require_once __DIR__ . '/../inc/db.php';
 require_once __DIR__ . '/../lib/case_events.php';
@@ -186,12 +185,8 @@ if (empty($appointments)) {
             </td>
             <td class="text-end pe-3">
                 <div class="d-flex gap-1 justify-content-end">
-                    <a href="new_appointment.php?id=' . (int)$appointment['id'] . '" class="btn btn-sm btn-dark mb-0" title="Edit">
-                        <i class="ni ni-ruler-pencil"></i>
-                    </a>
-                    <a href="javascript:void(0)" class="btn btn-sm btn-danger mb-0" title="Delete" onclick="deleteAppointment(' . (int)$appointment['id'] . ', \'' . addslashes($caseDisplay) . '\'); return false;">
-                        <i class="ni ni-fat-remove"></i>
-                    </a>
+                    <a href="new_appointment.php?id=' . (int)$appointment['id'] . '" class="btn btn-sm btn-dark mb-0">Edit</a>
+                    <a href="javascript:void(0)" class="btn btn-sm btn-danger mb-0" onclick="deleteAppointment(' . (int)$appointment['id'] . ', \'' . addslashes($caseDisplay) . '\'); return false;">Delete</a>
                 </div>
             </td>
         </tr>';

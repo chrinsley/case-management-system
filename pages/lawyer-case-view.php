@@ -355,13 +355,13 @@ $html = <<<'HTML'
                                         <span class="text-sm text-muted">Phone:</span>
                                         <span class="text-sm font-weight-bold ms-2">{CLIENT_PHONE}</span>
                                     </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <h6 class="text-sm font-weight-bold mb-3">Case Information</h6>
                                     <div class="mb-2">
                                         <span class="text-sm text-muted">Assigned Lawyers:</span>
                                         <span class="text-sm font-weight-bold ms-2">{ASSIGNED_LAWYERS}</span>
                                     </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-sm font-weight-bold mb-3">Case Information</h6>
                                     <div class="mb-2">
                                         <span class="text-sm text-muted">Created:</span>
                                         <span class="text-sm font-weight-bold ms-2">{CREATED_DATE}</span>

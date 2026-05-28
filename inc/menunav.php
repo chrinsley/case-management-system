@@ -1,4 +1,3 @@
-
 <?php
 // inc/menunav.php
 // Clean navigation menu for LegalPro Case Manager

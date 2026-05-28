@@ -858,14 +858,14 @@ $html = <<<'HTML'
                                 <input type="hidden" name="form_type" value="update_case">
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-control-label text-sm font-weight-bold">Case Title <span class="text-danger">*</span></label>
-                                        <input class="form-control" type="text" name="title" value="{CASE_TITLE}" required>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
                                         <label class="form-control-label text-sm font-weight-bold">Client <span class="text-danger">*</span></label>
                                         <select class="form-control" name="client_id" required>
                                             {CLIENT_OPTIONS}
                                         </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-control-label text-sm font-weight-bold">Case Title <span class="text-danger">*</span></label>
+                                        <input class="form-control" type="text" name="title" value="{CASE_TITLE}" required>
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-control-label text-sm font-weight-bold">Assigned Lawyers</label>
